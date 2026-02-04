@@ -107,11 +107,11 @@
 PostgreSQLをDockerで起動できる状態にし、テスト/実装の前提を整える
 
 #### 実装内容
-- [ ] docker-compose で PostgreSQL を起動できるようにする
-- [ ] 開発/テスト用の接続情報を明記する
-- [ ] マイグレーションの置き場を決める（例: `backend/migrations/`）
-- [ ] マイグレーションツールを選定する（golang-migrate）
-- [ ] CIでDBを起動する方式を定義する（GitHub ActionsのPostgres service）
+- [x] docker-compose で PostgreSQL を起動できるようにする
+- [x] 開発/テスト用の接続情報を明記する
+- [x] マイグレーションの置き場を決める（例: `backend/migrations/`）
+- [x] マイグレーションツールを選定する（golang-migrate）
+- [x] CIでDBを起動する方式を定義する（GitHub ActionsのPostgres service）
 
 #### 成果物
 - `docker-compose.yml`
@@ -120,13 +120,18 @@ PostgreSQLをDockerで起動できる状態にし、テスト/実装の前提を
 - 採用するマイグレーションツールの明記
 - CIでDBを起動する方式の明記
 
+#### CIでのDB起動方式（具体）
+- GitHub ActionsのjobにPostgres serviceを追加
+- `POSTGRES_DB=order_inventory_test` / `POSTGRES_USER=order_inventory` / `POSTGRES_PASSWORD=order_inventory`
+- テストは `localhost:5432` で接続（CI内サービスのデフォルト）
+
 #### セルフチェック
-- 契約:
-- 差分:
-- 生成:
-- 構造:
-- 不変条件:
-- 境界前提:
+- 契約: 変更なし
+- 差分: 変更なし
+- 生成: 変更なし
+- 構造: 変更なし
+- 不変条件: 変更なし
+- 境界前提: 変更なし
 
 ---
 

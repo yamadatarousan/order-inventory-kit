@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: order_inventory
+      POSTGRES_PASSWORD: order_inventory
+      POSTGRES_DB: order_inventory_dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./tools/db/init:/docker-entrypoint-initdb.d
+
+volumes:
+  pgdata:

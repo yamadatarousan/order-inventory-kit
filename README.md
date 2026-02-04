@@ -17,3 +17,8 @@
 ### 境界前提テスト例
 - `POST /orders` が `accepted` を返したら即座に `GET /orders/{id}` が `confirmed`
 - 存在しないIDは `404`、権限なしは `403`
+
+### DB (Docker / PostgreSQL)
+- 起動: `docker compose up -d`
+- 接続情報（開発）: `postgres://order_inventory:order_inventory@localhost:5434/order_inventory_dev`
+- 接続情報（テスト）: `postgres://order_inventory:order_inventory@localhost:5434/order_inventory_test`
