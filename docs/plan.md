@@ -14,6 +14,15 @@
 - 生成物はCIで再生成し、差分が出たら失敗させる
 - 依存方向（Handler → UseCase → Domain）を構造検査で固定する
 
+## 技術スタック（厳選）
+- 契約: OpenAPI（`contracts/openapi.yaml` を単一参照点）
+- 差分検査: OpenAPI差分ツール（破壊的変更の検出に必須）
+- 生成: Go/TSの型・クライアント生成（契約との差分固定のため）
+- バックエンド: Go + Gin（HTTP境界の実装と検証）
+- フロントエンド: TypeScript + React + Vite（契約からの型利用と最小UI）
+- テスト: go test / Vitest（不変条件・境界前提の固定）
+- 構造検査: 依存方向/越境の静的検査（探索空間の制約）
+
 ## ファイル命名/配置のルール
 - OpenAPIは `contracts/openapi.yaml` を単一参照点にする
 - 破壊的変更の移行定義は `contracts/migrations/*.yaml`
