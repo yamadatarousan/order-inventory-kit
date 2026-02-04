@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  rails:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: OpenAPI diff
+        run: ./tools/openapi/diff.sh
+
+      - name: OpenAPI generate
+        run: ./tools/openapi/generate.sh
+
+      - name: Architecture checks
+        run: ./tools/arch/check.sh
+
+      - name: Domain tests (placeholder)
+        run: echo "[domain-tests] placeholder"
+
+      - name: Boundary tests (placeholder)
+        run: echo "[boundary-tests] placeholder"

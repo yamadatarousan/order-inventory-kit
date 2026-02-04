@@ -1,0 +1,15 @@
+id: 2026-02-04-example
+summary: "Describe the breaking change"
+breaking_changes:
+  - id: BC-001
+    description: "What is breaking"
+    affected_endpoints:
+      - "POST /orders"
+    mitigation:
+      - "How clients should migrate"
+deprecated_until: "2026-03-31"
+migration_steps:
+  - "Step 1"
+  - "Step 2"
+notes:
+  - "Anything else"
