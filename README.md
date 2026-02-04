@@ -22,3 +22,6 @@
 - 起動: `docker compose up -d`
 - 接続情報（開発）: `postgres://order_inventory:order_inventory@localhost:5434/order_inventory_dev`
 - 接続情報（テスト）: `postgres://order_inventory:order_inventory@localhost:5434/order_inventory_test`
+
+### テストの役割
+- `docs/testing-roles.md` を参照
