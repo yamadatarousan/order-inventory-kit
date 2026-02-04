@@ -1,5 +1,7 @@
 id: 2026-02-04-example
 summary: "Describe the breaking change"
+# 破壊的変更の要約（何が壊れるかを一文で）
+# 例: "POST /orders のレスポンスから status を削除"
 breaking_changes:
   - id: BC-001
     description: "What is breaking"
@@ -7,9 +9,17 @@ breaking_changes:
       - "POST /orders"
     mitigation:
       - "How clients should migrate"
+    # 破壊への対応手順を具体化する
+    # 例: "新フィールド orderState を使うように変更"
 deprecated_until: "2026-03-31"
+# 互換を残す期限（この日以降に削除可能）
+# 破壊的変更を許容するための猶予期間を明示
 migration_steps:
   - "Step 1"
   - "Step 2"
+  # クライアント側の移行ステップ
+  # 例: "API v1 を参照する部分を v2 に切り替える"
 notes:
   - "Anything else"
+# 補足情報
+# 例: ロールアウト手順、影響範囲、関連PRなど

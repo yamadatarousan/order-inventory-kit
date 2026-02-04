@@ -1,4 +1,6 @@
 name: ci
+# このCIは「探索結果の固定化条件」を自動判定するための関所
+# 人間の判断ではなく、成果物/検査の結果に従属して統合可否を決める
 
 on:
   pull_request:
@@ -14,16 +16,26 @@ jobs:
         uses: actions/checkout@v4
 
       - name: OpenAPI diff
+        # 境界（契約）の差分検査
+        # 破壊的変更があれば移行定義の追加が必須になる想定
         run: ./tools/openapi/diff.sh
 
       - name: OpenAPI generate
+        # 生成物の整合チェック
+        # OpenAPIから再生成した結果とリポジトリ内の生成物が一致することを要求
         run: ./tools/openapi/generate.sh
 
       - name: Architecture checks
+        # 依存方向/越境の構造検査
+        # Handler → UseCase → Domain の片方向依存などの制約を破った変更を落とす
         run: ./tools/arch/check.sh
 
       - name: Domain tests (placeholder)
+        # ドメイン不変条件のテスト
+        # 実装のやり方ではなく、満たすべき性質（在庫負数禁止など）を固定する
         run: echo "[domain-tests] placeholder"
 
       - name: Boundary tests (placeholder)
+        # 境界前提テスト
+        # OpenAPI差分だけでは検出できない「意味の変更」を検出し固定する
         run: echo "[boundary-tests] placeholder"
