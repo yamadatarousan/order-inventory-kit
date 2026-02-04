@@ -152,21 +152,22 @@ PostgreSQLをDockerで起動できる状態にし、テスト/実装の前提を
 GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 
 #### 実装内容
-- [ ] Handler / UseCase / Domain の最小レイヤ
-- [ ] 注文作成 / 参照 / 確定 / キャンセル
-- [ ] 仮のインメモリリポジトリ
+- [x] 仕様テスト（Domainの最小仕様）から着手
+- [x] Handler / UseCase / Domain の最小レイヤ
+- [x] 注文作成 / 参照 / 確定 / キャンセル
+- [x] 仮のインメモリリポジトリ
 
 #### 成果物
 - `backend/cmd/api/`
 - `backend/internal/{adapter,usecase,domain,infra}/`
 
 #### セルフチェック
-- 契約:
-- 差分:
-- 生成:
-- 構造:
-- 不変条件:
-- 境界前提:
+- 契約: 変更なし
+- 差分: 変更なし
+- 生成: 変更なし
+- 構造: 依存方向は維持（Handler→UseCase→Domain）
+- 不変条件: Domain仕様テストで固定
+- 境界前提: Handlerの境界テストで固定
 
 #### セルフチェック
 - 契約:
