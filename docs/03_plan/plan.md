@@ -235,6 +235,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [ ] エラー分類（404/403/400）の固定
 - [ ] 冪等性の固定（同一操作を2回）
 - [x] 境界前提テストは `backend/tests/boundary/` に集約する方針で固定
+- [ ] 既存の境界テストを `backend/tests/boundary/` に移動して整理
 
 #### 成果物
 - `backend/tests/boundary/` の前提テスト
