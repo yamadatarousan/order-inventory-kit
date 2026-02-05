@@ -97,8 +97,8 @@
 #### 実装内容
 - [x] `contracts/openapi.yaml` の初期定義
 - [x] `contracts/migrations/` のテンプレ作成
-- [ ] OpenAPI差分検査を oasdiff で実装
-- [ ] `tools/openapi/diff.sh` を oasdiff で実運用化する
+- [x] OpenAPI差分検査を oasdiff で実装
+- [x] `tools/openapi/diff.sh` を oasdiff で実運用化する
 - [ ] レール自己テストを追加（fixtures + diff_test）
 - [ ] 破壊的変更 → 移行定義必須の判定を自動化
 - [ ] 生成整合（Go/TSクライアント）を oapi-codegen / openapi-typescript + openapi-fetch で実装
