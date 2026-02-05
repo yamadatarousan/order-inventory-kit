@@ -87,15 +87,22 @@
 #### 目標
 固定化条件を機械的に運用できる状態にする
 
+#### 方針（ツール選定）
+- OpenAPI差分: oasdiff
+- 生成（Go）: oapi-codegen
+- 生成（TS）: openapi-typescript + openapi-fetch
+- 構造検査（Go）: golangci-lint + depguard
+- 構造検査（TS）: eslint import/no-restricted-paths
+
 #### 実装内容
 - [x] `contracts/openapi.yaml` の初期定義
 - [x] `contracts/migrations/` のテンプレ作成
-- [ ] OpenAPI差分検査を実ツールで実装
-- [ ] `tools/openapi/diff.sh` を最初に実運用化する
+- [ ] OpenAPI差分検査を oasdiff で実装
+- [ ] `tools/openapi/diff.sh` を oasdiff で実運用化する
 - [ ] 破壊的変更 → 移行定義必須の判定を自動化
-- [ ] 生成整合（Go/TSクライアント）を実ツールで実装
-- [ ] 依存方向/越境の構造検査ルールを実装
-- [ ] CIで差分→生成→構造→不変条件→境界前提を実行
+- [ ] 生成整合（Go/TSクライアント）を oapi-codegen / openapi-typescript + openapi-fetch で実装
+- [ ] 依存方向/越境の構造検査ルールを golangci-lint + depguard / eslint import/no-restricted-paths で実装
+- [ ] CIで差分→生成→構造→不変条件→境界前提を実行（上記ツール前提）
 - [ ] 構造検査ルールの配置と運用方法を確定（tools/arch or lint設定）
 
 #### 成果物
@@ -163,6 +170,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 
 #### 成果物
 - `backend/internal/{adapter,usecase,domain,infra}/`
+- `backend/cmd/api/main.go`
 
 #### セルフチェック
 - 契約: 変更なし
@@ -209,8 +217,10 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [ ] 二重確定禁止
 - [ ] 支払い二重計上禁止
 - [x] 不変条件テストは `backend/tests/domain/` に集約する方針で固定
+- [ ] 既存のドメインテストを `backend/tests/domain/` に移動して整理
 - [ ] 在庫増減を扱うユースケース/ドメインを実装して不変条件を実地で検証
-- [ ] CustomerID を Domain に持たせるかを決めて方針を固定
+- [x] CustomerID は Domain に持たせる方針で固定
+- [ ] Order に CustomerID を保持し、NewOrder で必須化する
 
 #### 成果物
 - `backend/tests/domain/` の不変条件テスト
