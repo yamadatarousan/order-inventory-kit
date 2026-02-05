@@ -1,6 +1,6 @@
 # Webシステム スターターキット案（Frontend: TypeScript + React / Backend: Go + Gin）
 
-作業ディレクトリ直下の想定（`/Users/user/Development/docs`）。
+作業ディレクトリ直下の想定（`/Users/user/Development/order-inventory-kit`）。
 
 ## 目的
 - 生成（探索）と統合（固定化）を分離し、CIが統合可否を機械判定できる構成にする。
@@ -24,7 +24,7 @@
 - Gin
 - OpenAPI生成：oapi-codegen
 - DB（例）：PostgreSQL
-- マイグレーション：goose もしくは sqlc + migrations
+- マイグレーション：golang-migrate
 - テスト：go test（ユニット/統合）
 
 ### 契約・境界
@@ -44,6 +44,7 @@
   - 構造検査（依存方向・越境）
   - ドメイン不変条件テスト
   - 境界の前提テスト
+  - 実ツール導入までは雛形（Phase 0で実運用化）
 
 ---
 
@@ -62,10 +63,10 @@
 │   ├── internal/
 │   │   ├── adapter/
 │   │   │   ├── handler/             # Gin handlers (HTTP)
-│   │   │   └── repo/                # DB実装
 │   │   ├── usecase/                 # アプリケーション層
 │   │   ├── domain/                  # エンティティ/値オブジェクト/不変条件
-│   │   └── infra/                   # DB/外部サービス
+│   │   └── infra/
+│   │       └── db/                  # DB実装
 │   ├── tests/
 │   │   ├── boundary/                # 境界前提テスト（HTTP）
 │   │   └── domain/                  # 不変条件テスト
@@ -107,4 +108,3 @@
 ## 補足
 - 生成物はCIで再生成し、差分が出たら失敗させる（固定化のため）。
 - 依存方向ルールは「探索空間の制約」でもあり「固定化条件」でもある。
-
