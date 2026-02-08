@@ -5,6 +5,7 @@ set -euo pipefail
 # 引数が無い場合はgitの参照から自動解決する
 BASE_SPEC="${1:-}"
 REV_SPEC="${2:-}"
+BASE_REF=""
 
 resolve_base_spec() {
   local ref="${1:-origin/main}"
@@ -12,6 +13,7 @@ resolve_base_spec() {
   # gitの指定リビジョンから contracts/openapi.yaml を取得する
   tmp="$(mktemp /tmp/openapi_base.XXXXXX.yaml)"
   if git show "${ref}:contracts/openapi.yaml" > "${tmp}" 2>/dev/null; then
+    BASE_REF="${ref}"
     echo "${tmp}"
     return 0
   fi
@@ -40,22 +42,29 @@ fi
 run_oasdiff() {
   local base="$1"
   local rev="$2"
+  local status
 
   if command -v oasdiff >/dev/null 2>&1; then
     # oasdiffが入っていればそのまま使う
+    set +e
     oasdiff breaking --fail-on WARN "$base" "$rev"
-    return 0
+    status=$?
+    set -e
+    return $status
   fi
 
   if command -v docker >/dev/null 2>&1; then
     # oasdiffが無い場合はDockerイメージで実行する
+    set +e
     docker run --rm \
       -v "$PWD":/work \
       -v /tmp:/tmp \
       -w /work \
       tufin/oasdiff:latest \
       breaking --fail-on WARN "$base" "$rev"
-    return 0
+    status=$?
+    set -e
+    return $status
   fi
 
   # どちらも無い場合は失敗させる
@@ -64,3 +73,18 @@ run_oasdiff() {
 }
 
 run_oasdiff "$BASE_SPEC" "$REV_SPEC"
+status=$?
+if [[ $status -eq 0 ]]; then
+  exit 0
+fi
+
+# 破壊的変更が検出された場合は移行定義の追加を要求する
+if [[ -n "$BASE_REF" ]]; then
+  if git diff --name-only "$BASE_REF" -- contracts/migrations | grep -E '\\.ya?ml$' >/dev/null; then
+    echo "[openapi-diff] breaking detected, migration file found -> allow"
+    exit 0
+  fi
+fi
+
+echo "[openapi-diff] breaking detected and no migration file found"
+exit 1
