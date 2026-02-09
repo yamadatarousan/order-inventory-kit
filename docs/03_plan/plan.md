@@ -77,7 +77,7 @@
   - 支払いは一度だけ
 - 境界前提テスト例
   - `POST /orders` が `accepted` を返したら `GET /orders/{id}` が `confirmed`
-  - 存在しないIDは `404`、権限なしは `403`
+  - 存在しないIDは `404`、権限なしは `403`（`403` の固定は Phase 7）
 
 ---
 
@@ -103,7 +103,13 @@
 - [x] 破壊的変更 → 移行定義必須の判定を自動化
 - [x] 生成整合（Go/TSクライアント）を oapi-codegen / openapi-typescript + openapi-fetch で実装
 - [x] 依存方向/越境の構造検査ルールを golangci-lint + depguard / eslint import/no-restricted-paths で実装
-- [ ] CIで差分→生成→構造→不変条件→境界前提を実行（上記ツール前提）
+- [x] CIで差分→生成→構造を実行（rails job）
+- [ ] `.github/workflows/ci.yml` の rails job に Postgres service を追加し、migrate適用後に domain/boundary テストを実行可能にする
+- [ ] `backend/tests/domain/` に最小不変条件テストを先行作成（順序補正）
+- [ ] `backend/tests/boundary/` に最小境界前提テストを先行作成（順序補正）
+- [ ] CIで不変条件テストを実行（placeholder削除）
+- [ ] CIで境界前提テストを実行（placeholder削除）
+- [ ] CIで差分→生成→構造→不変条件→境界前提の通し順を確認（上記ツール前提）
 - [ ] 構造検査ルールの配置と運用方法を確定（tools/arch or lint設定）
 
 #### 成果物
@@ -214,14 +220,20 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 「性質」をテストとして固定し、実装変更で崩れないことを保証する
 
 #### 実装内容
-- [ ] 在庫負数禁止
-- [ ] 二重確定禁止
-- [ ] 支払い二重計上禁止
+- [ ] Inventoryドメイン（SKU在庫・数量>=0）を実装する
+- [ ] 在庫確保ユースケースを実装する（不足時は失敗）
+- [ ] 在庫戻しユースケースを実装する（キャンセル時）
+- [ ] DB在庫リポジトリの在庫更新をトランザクション化する
+- [ ] 在庫負数禁止を不変条件テストで固定する
+- [ ] 二重確定禁止を不変条件テストで固定する
+- [ ] 支払い二重計上禁止を不変条件テストで固定する
 - [x] 不変条件テストは `backend/tests/domain/` に集約する方針で固定
 - [ ] 既存のドメインテストを `backend/tests/domain/` に移動して整理
-- [ ] 在庫増減を扱うユースケース/ドメインを実装して不変条件を実地で検証
+- [ ] `backend/internal/domain/order_test.go` を `backend/tests/domain/` に移動する
+- [ ] `backend/internal/usecase/order_usecase_test.go` の不変条件ケースを `backend/tests/domain/` に移動する
 - [x] CustomerID は Domain に持たせる方針で固定
 - [ ] Order に CustomerID を保持し、NewOrder で必須化する
+- [ ] CI接続は Phase 0 の完了条件に従属（ここでは不変条件テストの内容拡張に専念する）
 
 #### 成果物
 - `backend/tests/domain/` の不変条件テスト
@@ -243,10 +255,14 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 
 #### 実装内容
 - [ ] 200の意味（accepted → confirmed）を固定
-- [ ] エラー分類（404/403/400）の固定
+- [ ] エラー分類（404/400）の固定
 - [ ] 冪等性の固定（同一操作を2回）
 - [x] 境界前提テストは `backend/tests/boundary/` に集約する方針で固定
 - [ ] 既存の境界テストを `backend/tests/boundary/` に移動して整理
+- [ ] `backend/internal/adapter/handler/order_handler_test.go` の境界前提ケースを `backend/tests/boundary/` に移動する
+- [ ] 境界前提テストに観測結果（HTTPステータス/レスポンス/後続状態/副作用）を明記する
+- [ ] `403` 分類は Phase 7（認可導入）で固定する
+- [ ] CI接続は Phase 0 の完了条件に従属（ここでは境界前提テストの内容拡張に専念する）
 
 #### 成果物
 - `backend/tests/boundary/` の前提テスト
@@ -275,6 +291,31 @@ OpenAPI生成クライアントを用いてUIから操作できる状態にす�
 - `frontend/src/app/`
 - `frontend/src/features/`
 - `frontend/src/api/`（生成物）
+
+#### セルフチェック
+- 契約:
+- 差分:
+- 生成:
+- 構造:
+- 不変条件:
+- 境界前提:
+
+---
+
+### Phase 7: 認可導入（403固定の前提）
+
+#### 目標
+`403` を境界の固定条件として扱える前提（認証/認可）を成立させる
+
+#### 実装内容
+- [ ] 認証方式と権限モデルを定義する（誰が何にアクセス可能か）
+- [ ] Handler / UseCase に認可チェックを導入する
+- [ ] `contracts/openapi.yaml` に `403` レスポンスを追加する
+- [ ] 境界前提テストで `403` 分類を固定する
+
+#### 成果物
+- 認可仕様を反映した `contracts/openapi.yaml`
+- `backend/tests/boundary/` の `403` 前提テスト
 
 #### セルフチェック
 - 契約:
@@ -319,4 +360,4 @@ OpenAPI生成クライアントを用いてUIから操作できる状態にす�
 
 ---
 
-最終更新: 2026-02-04
+最終更新: 2026-02-09
