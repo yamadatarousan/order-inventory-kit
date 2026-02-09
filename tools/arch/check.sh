@@ -137,12 +137,20 @@ run_ts_check() {
   if command -v npm >/dev/null 2>&1; then
     local cache_root="${TMPDIR:-/tmp}/order-inventory-kit-arch-check/npm-deps"
     local bin_path="${cache_root}/node_modules/.bin/eslint"
+    # npm --prefix の導入先には package.json が必要なため、最小定義を用意する。
+    local cache_package_json="${cache_root}/package.json"
     mkdir -p "${cache_root}"
+    if [[ ! -f "${cache_package_json}" ]]; then
+      echo '{"name":"arch-check-cache","private":true}' > "${cache_package_json}"
+    fi
     if [[ ! -x "${bin_path}" ]]; then
-      NPM_CONFIG_CACHE="${cache_root}/cache" \
-      npm install --silent --no-save --prefix "${cache_root}" \
+      echo "[arch-check][ts] install eslint deps into cache"
       # TS パースと import ルール実行に必要な最低限を固定バージョンで入れる。
-      eslint@9.22.0 eslint-plugin-import@2.31.0 @typescript-eslint/parser@8.26.0 >/dev/null 2>&1 || true
+      if ! NPM_CONFIG_CACHE="${cache_root}/cache" \
+        npm install --no-save --prefix "${cache_root}" \
+        eslint@9.22.0 eslint-plugin-import@2.31.0 @typescript-eslint/parser@8.26.0 typescript@5.7.3; then
+        echo "[arch-check][ts] npm cache install failed, fallback to docker if available"
+      fi
     fi
 
     # バイナリが用意できた場合のみ本検査を実行する。
@@ -159,10 +167,11 @@ run_ts_check() {
   # 最終フォールバック: docker 上で一時的に依存を入れて eslint 実行。
   # /src は読み取り専用でマウントし、作業はコンテナ内 /work で完結させる。
   if command -v docker >/dev/null 2>&1; then
+    echo "[arch-check][ts] fallback to docker"
     if docker run --rm \
       -v "${ROOT_DIR}/${dir}:/src:ro" \
       node:22-alpine \
-      sh -lc "mkdir -p /work && cp -R /src/. /work && cd /work && npm install --silent --no-save eslint@9.22.0 eslint-plugin-import@2.31.0 @typescript-eslint/parser@8.26.0 && npx eslint --config $(basename "${config}") --ext .ts,.tsx src"; then
+      sh -lc "mkdir -p /work && cp -R /src/. /work && cd /work && npm install --no-save eslint@9.22.0 eslint-plugin-import@2.31.0 @typescript-eslint/parser@8.26.0 typescript@5.7.3 && npx eslint --config $(basename "${config}") --ext .ts,.tsx src"; then
       return 0
     fi
   fi
