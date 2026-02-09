@@ -1,0 +1,12 @@
+{
+  "name": "order-inventory-kit-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "openapi-fetch": "^0.14.0"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.12.0"
+  }
+}
