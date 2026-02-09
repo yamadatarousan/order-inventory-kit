@@ -110,13 +110,14 @@
 - [x] CIで不変条件テストを実行（placeholder削除）
 - [x] CIで境界観測一貫性テストを実行（placeholder削除）
 - [x] CIで差分→生成→構造→不変条件→境界観測一貫性の通し順を確認（上記ツール前提）
-- [ ] 構造検査ルールの配置と運用方法を確定（tools/arch or lint設定）
+- [x] 構造検査ルールの配置と運用方法を確定（`tools/arch/README.md` / lint設定）
 
 #### 成果物
 - `contracts/openapi.yaml`
 - `contracts/migrations/template.yaml`
 - `tools/openapi/` の実装済みスクリプト
 - `tools/arch/` の実装済みスクリプト
+- `tools/arch/README.md`（構造検査ルールの配置と運用）
 - `.github/workflows/ci.yml`（実運用の関所）
 
 #### セルフチェック

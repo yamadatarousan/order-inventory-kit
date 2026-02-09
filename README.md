@@ -24,4 +24,4 @@
 - 接続情報（テスト）: `postgres://order_inventory:order_inventory@localhost:5434/order_inventory_test`
 
 ### テストの役割
-- `docs/04_testing/testing-roles.md` を参照
+- `docs/testing-roles.md` を参照
