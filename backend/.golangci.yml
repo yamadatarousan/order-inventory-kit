@@ -1,0 +1,54 @@
+run:
+  timeout: 5m
+  tests: false
+
+linters:
+  disable-all: true
+  enable:
+    - depguard
+
+linters-settings:
+  depguard:
+    rules:
+      domain-layer:
+        list-mode: strict
+        files:
+          - "**/internal/domain/*"
+          - "**/internal/domain/**/*"
+        allow:
+          - $gostd
+      usecase-layer:
+        list-mode: strict
+        files:
+          - "**/internal/usecase/*"
+          - "**/internal/usecase/**/*"
+        allow:
+          - $gostd
+          - order-inventory-kit/internal/domain
+      handler-layer:
+        list-mode: strict
+        files:
+          - "**/internal/adapter/handler/*"
+          - "**/internal/adapter/handler/**/*"
+        allow:
+          - $gostd
+          - github.com/gin-gonic/gin
+          - order-inventory-kit/internal/domain
+          - order-inventory-kit/internal/usecase
+      generated-layer:
+        list-mode: strict
+        files:
+          - "**/internal/adapter/generated/*"
+          - "**/internal/adapter/generated/**/*"
+        allow:
+          - $gostd
+          - github.com/gin-gonic/gin
+          - github.com/oapi-codegen/runtime
+      infra-layer:
+        list-mode: strict
+        files:
+          - "**/internal/infra/*"
+          - "**/internal/infra/**/*"
+        allow:
+          - $gostd
+          - order-inventory-kit/internal/domain

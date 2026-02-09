@@ -1,0 +1,35 @@
+run:
+  timeout: 5m
+  tests: false
+
+linters:
+  disable-all: true
+  enable:
+    - depguard
+
+linters-settings:
+  depguard:
+    rules:
+      domain-layer:
+        list-mode: strict
+        files:
+          - "**/internal/domain/*"
+          - "**/internal/domain/**/*"
+        allow:
+          - $gostd
+      usecase-layer:
+        list-mode: strict
+        files:
+          - "**/internal/usecase/*"
+          - "**/internal/usecase/**/*"
+        allow:
+          - $gostd
+          - order-inventory-kit/internal/domain
+      handler-layer:
+        list-mode: strict
+        files:
+          - "**/internal/adapter/handler/*"
+          - "**/internal/adapter/handler/**/*"
+        allow:
+          - $gostd
+          - order-inventory-kit/internal/usecase

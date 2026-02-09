@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# 目的:
+# OpenAPI から Go/TS の生成物を作成し、契約と生成物の整合を維持する。
+# 実施内容:
+# oapi-codegen と openapi-typescript で生成し、--check 時は生成差分の有無を検査する。
 # 途中失敗と未定義変数を即時検知し、パイプ失敗も伝播させる。
 set -euo pipefail
 

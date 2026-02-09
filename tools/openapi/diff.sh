@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# 目的:
+# OpenAPI 差分を検査し、破壊的変更が移行定義なしで混入することを防ぐ。
+# 実施内容:
+# base/rev の契約を比較し、breaking 検出時は contracts/migrations の追加有無で可否を判定する。
 set -euo pipefail
 
 # BASE_SPEC / REV_SPEC は比較対象のOpenAPIパス

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# 目的:
+# OpenAPI 差分レールの自己テストを行い、breaking/non-breaking 判定が期待どおり動くことを確認する。
+# 実施内容:
+# fixture の 2 パターン（破壊的/非破壊）で diff.sh を実行し、終了コードを検証する。
 set -euo pipefail
 
 BASE="contracts/fixtures/openapi_base.yaml"

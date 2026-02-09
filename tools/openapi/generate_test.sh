@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# 目的:
+# 生成整合レールの自己テストを行い、必要な生成物が揃うことを確認する。
+# 実施内容:
+# generate.sh を実行した後、Go 生成物・TS schema・openapi-fetch クライアントの存在を検証する。
 set -euo pipefail
 
 GO_OUT="backend/internal/adapter/generated/openapi.gen.go"
