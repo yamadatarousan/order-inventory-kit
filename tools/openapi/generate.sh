@@ -15,6 +15,7 @@ OPENAPI_SPEC="contracts/openapi.yaml"
 GO_OUT="backend/internal/adapter/generated/openapi.gen.go"
 TS_SCHEMA_OUT="frontend/src/api/schema.d.ts"
 TS_CLIENT_OUT="frontend/src/api/client.ts"
+OAPI_CODEGEN_VERSION="v2.5.1"
 
 # auto: CIでは整合チェック、ローカルでは生成書き込みをデフォルトにする。
 MODE="${1:-auto}"
@@ -40,30 +41,25 @@ mkdir -p "$(dirname "${GO_OUT}")"
 mkdir -p "$(dirname "${TS_SCHEMA_OUT}")"
 
 # Go生成物を作る。
-# 優先順位:
-# 1) 既存の oapi-codegen バイナリ
-# 2) go install で一時導入したバイナリ
-# どちらも使えなければ失敗にする。
+# ローカル環境差分を避けるため、固定バージョンの oapi-codegen を常に使う。
 generate_go() {
-  if command -v oapi-codegen >/dev/null 2>&1; then
-    oapi-codegen \
-      --package generated \
-      --generate types,gin \
-      -o "${GO_OUT}" \
-      "${OPENAPI_SPEC}"
-    return 0
-  fi
-
   if command -v go >/dev/null 2>&1; then
     # go install の成果物/キャッシュはワークスペースを汚さないよう /tmp 配下に置く。
     local cache_root="${TMPDIR:-/tmp}/order-inventory-kit-openapi-generate/go"
     local bin_dir="${cache_root}/bin"
+    local bin_path="${bin_dir}/oapi-codegen"
+    local version_file="${cache_root}/oapi-codegen.version"
     mkdir -p "${bin_dir}" "${cache_root}/gomod" "${cache_root}/gocache"
-    GOBIN="${bin_dir}" \
-      GOMODCACHE="${cache_root}/gomod" \
-      GOCACHE="${cache_root}/gocache" \
-      go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1
-    "${bin_dir}/oapi-codegen" \
+
+    if [[ ! -x "${bin_path}" || ! -f "${version_file}" || "$(cat "${version_file}")" != "${OAPI_CODEGEN_VERSION}" ]]; then
+      GOBIN="${bin_dir}" \
+        GOMODCACHE="${cache_root}/gomod" \
+        GOCACHE="${cache_root}/gocache" \
+        go install "github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@${OAPI_CODEGEN_VERSION}"
+      echo "${OAPI_CODEGEN_VERSION}" > "${version_file}"
+    fi
+
+    "${bin_path}" \
       --package generated \
       --generate types,gin \
       -o "${GO_OUT}" \
