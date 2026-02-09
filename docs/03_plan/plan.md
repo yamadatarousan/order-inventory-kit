@@ -107,9 +107,9 @@
 - [x] `.github/workflows/ci.yml` の rails job に Postgres service を追加し、migrate適用後に domain/boundary テストを実行可能にする
 - [x] `backend/tests/domain/` に最小不変条件テストを先行作成（順序補正）
 - [x] `backend/tests/boundary/` に最小境界観測一貫性テストを先行作成（順序補正）
-- [ ] CIで不変条件テストを実行（placeholder削除）
-- [ ] CIで境界観測一貫性テストを実行（placeholder削除）
-- [ ] CIで差分→生成→構造→不変条件→境界観測一貫性の通し順を確認（上記ツール前提）
+- [x] CIで不変条件テストを実行（placeholder削除）
+- [x] CIで境界観測一貫性テストを実行（placeholder削除）
+- [x] CIで差分→生成→構造→不変条件→境界観測一貫性の通し順を確認（上記ツール前提）
 - [ ] 構造検査ルールの配置と運用方法を確定（tools/arch or lint設定）
 
 #### 成果物
