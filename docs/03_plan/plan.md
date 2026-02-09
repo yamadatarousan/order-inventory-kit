@@ -104,7 +104,7 @@
 - [x] 生成整合（Go/TSクライアント）を oapi-codegen / openapi-typescript + openapi-fetch で実装
 - [x] 依存方向/越境の構造検査ルールを golangci-lint + depguard / eslint import/no-restricted-paths で実装
 - [x] CIで差分→生成→構造を実行（rails job）
-- [ ] `.github/workflows/ci.yml` の rails job に Postgres service を追加し、migrate適用後に domain/boundary テストを実行可能にする
+- [x] `.github/workflows/ci.yml` の rails job に Postgres service を追加し、migrate適用後に domain/boundary テストを実行可能にする
 - [ ] `backend/tests/domain/` に最小不変条件テストを先行作成（順序補正）
 - [ ] `backend/tests/boundary/` に最小境界前提テストを先行作成（順序補正）
 - [ ] CIで不変条件テストを実行（placeholder削除）
