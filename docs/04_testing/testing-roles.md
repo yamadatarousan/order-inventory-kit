@@ -9,7 +9,9 @@
 - 観測結果に含めるもの
   - HTTPステータス
   - レスポンス本文（分類と主要フィールド）
-  - 後続APIで観測される状態
+  - 後続APIで観測される状態（直前レスポンスだけでなく、続けて呼ぶAPIで確認できる状態）
+    - 例: `POST /orders` が `accepted` を返した直後、`GET /orders/{id}` で `status=confirmed` を観測できる
+    - 例: `POST /orders/{id}/cancel` の後、`GET /orders/{id}` で `status=canceled` を観測できる
   - 副作用（件数・金額・在庫など）
 - この定義に基づき、壊れると困る代表シナリオを `backend/tests/boundary/` で固定する
 

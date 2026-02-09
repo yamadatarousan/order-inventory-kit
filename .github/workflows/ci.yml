@@ -11,9 +11,42 @@ on:
 jobs:
   rails:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: order_inventory_test
+          POSTGRES_USER: order_inventory
+          POSTGRES_PASSWORD: order_inventory
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U order_inventory -d order_inventory_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://order_inventory:order_inventory@localhost:5432/order_inventory_test?sslmode=disable
+      DATABASE_URL: postgres://order_inventory:order_inventory@localhost:5432/order_inventory_test?sslmode=disable
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Ensure psql
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+
+      - name: Apply migrations
+        # DBを前提とするテストの実行準備。
+        # backend/migrations/*.up.sql を順に適用する。
+        run: |
+          for f in backend/migrations/*.up.sql; do
+            [ -f "$f" ] || continue
+            psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
 
       - name: OpenAPI diff
         # 境界（契約）の差分検査
@@ -30,12 +63,31 @@ jobs:
         # Handler → UseCase → Domain の片方向依存などの制約を破った変更を落とす
         run: ./tools/arch/check.sh
 
-      - name: Domain tests (placeholder)
+      - name: Domain tests
         # ドメイン不変条件のテスト
         # 実装のやり方ではなく、満たすべき性質（在庫負数禁止など）を固定する
-        run: echo "[domain-tests] placeholder"
+        run: |
+          if [ -n "$(find backend/tests/domain -type f -name '*_test.go' -print -quit 2>/dev/null)" ]; then
+            cd backend
+            go test ./tests/domain/...
+          else
+            echo "[domain-tests] skip: backend/tests/domain has no test files yet"
+          fi
 
-      - name: Boundary tests (placeholder)
+      - name: Boundary tests
         # 境界前提テスト
         # OpenAPI差分だけでは検出できない「意味の変更」を検出し固定する
-        run: echo "[boundary-tests] placeholder"
+        # ここでいう「意味」は、同じ入力条件に対して同じ観測結果になること
+        # 観測結果に含めるもの: HTTPステータス / レスポンス本文（分類と主要フィールド）
+        # 後続APIで観測される状態（直前レスポンスだけでなく、続けて呼ぶAPIで確認できる状態）
+        # 例: POST /orders が accepted を返した直後、GET /orders/{id} で status=confirmed を観測できる
+        # 例: POST /orders/{id}/cancel の後、GET /orders/{id} で status=canceled を観測できる
+        # 副作用（件数・金額・在庫など）
+        # この定義に基づき、壊れると困る代表シナリオを `backend/tests/boundary/` で固定する
+        run: |
+          if [ -n "$(find backend/tests/boundary -type f -name '*_test.go' -print -quit 2>/dev/null)" ]; then
+            cd backend
+            go test ./tests/boundary/...
+          else
+            echo "[boundary-tests] skip: backend/tests/boundary has no test files yet"
+          fi
