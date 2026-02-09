@@ -106,7 +106,7 @@
 - [x] CIで差分→生成→構造を実行（rails job）
 - [x] `.github/workflows/ci.yml` の rails job に Postgres service を追加し、migrate適用後に domain/boundary テストを実行可能にする
 - [x] `backend/tests/domain/` に最小不変条件テストを先行作成（順序補正）
-- [ ] `backend/tests/boundary/` に最小境界前提テストを先行作成（順序補正）
+- [x] `backend/tests/boundary/` に最小境界前提テストを先行作成（順序補正）
 - [ ] CIで不変条件テストを実行（placeholder削除）
 - [ ] CIで境界前提テストを実行（placeholder削除）
 - [ ] CIで差分→生成→構造→不変条件→境界前提の通し順を確認（上記ツール前提）
