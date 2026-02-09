@@ -30,7 +30,7 @@
 - 破壊的変更の移行定義は `contracts/migrations/*.yaml`
 - 境界テストは `backend/tests/boundary/`
 - 不変条件テストは `backend/tests/domain/`
-- 構造検査ルールは `backend/tools/arch-rules/` と `tools/arch/`
+- 構造検査ルールは `backend/.golangci.yml` / `frontend/eslint.config.cjs` / `tools/arch/`
 
 ---
 
@@ -236,7 +236,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [ ] `backend/internal/usecase/order_usecase_test.go` の不変条件ケースを `backend/tests/domain/` に移動する
 - [x] CustomerID は Domain に持たせる方針で固定
 - [ ] Order に CustomerID を保持し、NewOrder で必須化する
-- [ ] CI接続は Phase 0 の完了条件に従属（ここでは不変条件テストの内容拡張に専念する）
+- 注記: CI接続は Phase 0 の完了条件に従属（ここでは不変条件テストの内容拡張に専念する）
 
 #### 成果物
 - `backend/tests/domain/` の不変条件テスト
@@ -265,7 +265,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [ ] `backend/internal/adapter/handler/order_handler_test.go` の境界観測一貫性ケースを `backend/tests/boundary/` に移動する
 - [ ] 境界観測一貫性テストに観測結果（HTTPステータス/レスポンス/後続状態/副作用）を明記する
 - [ ] `403` 分類は Phase 7（認可導入）で固定する
-- [ ] CI接続は Phase 0 の完了条件に従属（ここでは境界観測一貫性テストの内容拡張に専念する）
+- 注記: CI接続は Phase 0 の完了条件に従属（ここでは境界観測一貫性テストの内容拡張に専念する）
 
 #### 成果物
 - `backend/tests/boundary/` の境界観測一貫性テスト
