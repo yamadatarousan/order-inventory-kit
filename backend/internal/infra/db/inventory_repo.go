@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -36,22 +37,43 @@ func (r *InventoryRepository) Reserve(sku string, quantity int) (domain.Inventor
 		return domain.Inventory{}, errors.New("invalid quantity")
 	}
 
-	row := r.db.QueryRow(`
-		UPDATE inventory
-		SET quantity = quantity - $2
-		WHERE sku = $1 AND quantity >= $2
-		RETURNING sku, quantity
-	`, sku, quantity)
+	tx, err := r.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		return domain.Inventory{}, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
 
 	var inv domain.Inventory
-	if err := row.Scan(&inv.SKU, &inv.Quantity); err == nil {
-		return inv, nil
+	row := tx.QueryRow(`
+		SELECT sku, quantity FROM inventory WHERE sku = $1 FOR UPDATE
+	`, sku)
+	if err := row.Scan(&inv.SKU, &inv.Quantity); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Inventory{}, errors.New("not found")
+		}
+		return domain.Inventory{}, err
 	}
 
-	if _, ok := r.GetBySKU(sku); !ok {
-		return domain.Inventory{}, errors.New("not found")
+	if err := inv.Reserve(quantity); err != nil {
+		return domain.Inventory{}, err
 	}
-	return domain.Inventory{}, errors.New("insufficient inventory")
+
+	if _, err := tx.Exec(`
+		UPDATE inventory SET quantity = $2 WHERE sku = $1
+	`, inv.SKU, inv.Quantity); err != nil {
+		return domain.Inventory{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return domain.Inventory{}, err
+	}
+	committed = true
+	return inv, nil
 }
 
 // Release は在庫を戻す。
@@ -60,16 +82,41 @@ func (r *InventoryRepository) Release(sku string, quantity int) (domain.Inventor
 		return domain.Inventory{}, errors.New("invalid quantity")
 	}
 
-	row := r.db.QueryRow(`
-		UPDATE inventory
-		SET quantity = quantity + $2
-		WHERE sku = $1
-		RETURNING sku, quantity
-	`, sku, quantity)
+	tx, err := r.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		return domain.Inventory{}, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
 
 	var inv domain.Inventory
+	row := tx.QueryRow(`
+		SELECT sku, quantity FROM inventory WHERE sku = $1 FOR UPDATE
+	`, sku)
 	if err := row.Scan(&inv.SKU, &inv.Quantity); err != nil {
-		return domain.Inventory{}, errors.New("not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Inventory{}, errors.New("not found")
+		}
+		return domain.Inventory{}, err
 	}
+
+	if err := inv.Release(quantity); err != nil {
+		return domain.Inventory{}, err
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE inventory SET quantity = $2 WHERE sku = $1
+	`, inv.SKU, inv.Quantity); err != nil {
+		return domain.Inventory{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return domain.Inventory{}, err
+	}
+	committed = true
 	return inv, nil
 }
