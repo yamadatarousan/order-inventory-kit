@@ -73,3 +73,48 @@ func TestReserveInventory_異常系_存在しないSKUは失敗(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 }
+
+func TestReleaseInventory_正常系(t *testing.T) {
+	repo := newMemoryInventoryRepo()
+	inv, _ := domain.NewInventory("sku-1", 2)
+	repo.items["sku-1"] = inv
+
+	uc := NewInventoryUsecase(repo)
+	out, err := uc.ReleaseInventory(ReleaseInventoryInput{SKU: "sku-1", Quantity: 3})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if out.SKU != "sku-1" {
+		t.Fatalf("expected sku-1, got %s", out.SKU)
+	}
+	if out.Quantity != 5 {
+		t.Fatalf("expected quantity 5, got %d", out.Quantity)
+	}
+
+	saved, _ := repo.GetBySKU("sku-1")
+	if saved.Quantity != 5 {
+		t.Fatalf("expected saved quantity 5, got %d", saved.Quantity)
+	}
+}
+
+func TestReleaseInventory_異常系_存在しないSKUは失敗(t *testing.T) {
+	repo := newMemoryInventoryRepo()
+	uc := NewInventoryUsecase(repo)
+
+	_, err := uc.ReleaseInventory(ReleaseInventoryInput{SKU: "missing", Quantity: 1})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
+func TestReleaseInventory_異常系_数量が不正(t *testing.T) {
+	repo := newMemoryInventoryRepo()
+	inv, _ := domain.NewInventory("sku-1", 2)
+	repo.items["sku-1"] = inv
+	uc := NewInventoryUsecase(repo)
+
+	_, err := uc.ReleaseInventory(ReleaseInventoryInput{SKU: "sku-1", Quantity: 0})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}
