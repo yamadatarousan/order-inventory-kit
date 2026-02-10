@@ -176,7 +176,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] Handler / UseCase / Domain の最小レイヤ
 - [x] 注文作成 / 参照 / 確定 / キャンセル
 - [x] 仮のインメモリリポジトリ
-- [ ] 起動エントリの作成（`backend/cmd/api/main.go`）
+- [x] 起動エントリの作成（`backend/cmd/api/main.go`）
 
 #### 成果物
 - `backend/internal/{adapter,usecase,domain,infra}/`
