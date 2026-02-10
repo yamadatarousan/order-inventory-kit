@@ -205,7 +205,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] `inventory_usecase` を `repo.Reserve` / `repo.Release` 呼び出しに切り替える
 - [x] `inventory_usecase_test` の `memoryInventoryRepo` を `Reserve` / `Release` 前提へ更新する
 - [x] DB在庫リポジトリの在庫更新をトランザクション化する（同時実行制御を含む）
-- [ ] 在庫テーブルの初期データ投入を実装する（seed/init）
+- [x] 在庫テーブルの初期データ投入を実装する（seed/init）
 - [ ] 在庫DBリポジトリの契約テストを追加する
 - [x] DB接続設定（env/設定ファイル）
 
