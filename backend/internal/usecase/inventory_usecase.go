@@ -9,7 +9,8 @@ import (
 // InventoryRepository は在庫の永続化を抽象化する。
 type InventoryRepository interface {
 	GetBySKU(sku string) (domain.Inventory, bool)
-	Update(inventory domain.Inventory) error
+	Reserve(sku string, quantity int) (domain.Inventory, error)
+	Release(sku string, quantity int) (domain.Inventory, error)
 }
 
 // InventoryUsecase は在庫ユースケースを提供する。
@@ -40,16 +41,8 @@ func (u *InventoryUsecase) ReserveInventory(input ReserveInventoryInput) (Reserv
 		return ReserveInventoryOutput{}, errors.New("invalid request")
 	}
 
-	inventory, ok := u.inventories.GetBySKU(input.SKU)
-	if !ok {
-		return ReserveInventoryOutput{}, errors.New("not found")
-	}
-
-	if err := inventory.Reserve(input.Quantity); err != nil {
-		return ReserveInventoryOutput{}, err
-	}
-
-	if err := u.inventories.Update(inventory); err != nil {
+	inventory, err := u.inventories.Reserve(input.SKU, input.Quantity)
+	if err != nil {
 		return ReserveInventoryOutput{}, err
 	}
 
@@ -77,16 +70,8 @@ func (u *InventoryUsecase) ReleaseInventory(input ReleaseInventoryInput) (Releas
 		return ReleaseInventoryOutput{}, errors.New("invalid request")
 	}
 
-	inventory, ok := u.inventories.GetBySKU(input.SKU)
-	if !ok {
-		return ReleaseInventoryOutput{}, errors.New("not found")
-	}
-
-	if err := inventory.Release(input.Quantity); err != nil {
-		return ReleaseInventoryOutput{}, err
-	}
-
-	if err := u.inventories.Update(inventory); err != nil {
+	inventory, err := u.inventories.Release(input.SKU, input.Quantity)
+	if err != nil {
 		return ReleaseInventoryOutput{}, err
 	}
 

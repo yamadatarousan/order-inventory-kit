@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"errors"
 	"testing"
 
 	"order-inventory-kit/internal/domain"
@@ -19,9 +20,28 @@ func (r *memoryInventoryRepo) GetBySKU(sku string) (domain.Inventory, bool) {
 	return inv, ok
 }
 
-func (r *memoryInventoryRepo) Update(inventory domain.Inventory) error {
-	r.items[inventory.SKU] = inventory
-	return nil
+func (r *memoryInventoryRepo) Reserve(sku string, quantity int) (domain.Inventory, error) {
+	inv, ok := r.items[sku]
+	if !ok {
+		return domain.Inventory{}, errors.New("not found")
+	}
+	if err := inv.Reserve(quantity); err != nil {
+		return domain.Inventory{}, err
+	}
+	r.items[sku] = inv
+	return inv, nil
+}
+
+func (r *memoryInventoryRepo) Release(sku string, quantity int) (domain.Inventory, error) {
+	inv, ok := r.items[sku]
+	if !ok {
+		return domain.Inventory{}, errors.New("not found")
+	}
+	if err := inv.Release(quantity); err != nil {
+		return domain.Inventory{}, err
+	}
+	r.items[sku] = inv
+	return inv, nil
 }
 
 func TestReserveInventory_正常系(t *testing.T) {
