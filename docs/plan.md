@@ -200,7 +200,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 #### 実装内容
 - [x] マイグレーションの作成（orders / order_items / payments / inventory）
 - [x] DBリポジトリ実装（注文/決済）
-- [ ] DB在庫リポジトリを実装する（`GetBySKU` / `Reserve` / `Release`）
+- [x] DB在庫リポジトリを実装する（`GetBySKU` / `Reserve` / `Release`）
 - [ ] InventoryRepository の更新責務を `Reserve` / `Release` に固定し、`Update` を廃止する
 - [ ] `inventory_usecase` を `repo.Reserve` / `repo.Release` 呼び出しに切り替える
 - [ ] `inventory_usecase_test` の `memoryInventoryRepo` を `Reserve` / `Release` 前提へ更新する
