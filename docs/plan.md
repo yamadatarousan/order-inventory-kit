@@ -267,18 +267,21 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 
 #### 実装内容
 - [ ] 統合境界テストの前提を定義する（対象API/観測項目/非対象を明文化）
+- [ ] `backend/tests/boundary` を二層化する（`*_unit_test.go` / `*_integration_test.go`）
 - [ ] 統合境界テスト用の testkit を追加する（実Router + 実UseCase + 実DB Repository を組み立てる）
 - [ ] 統合境界テスト用の DB 初期化/後片付け手順を固定する（migrate適用、seed投入、テーブルリセット）
 - [ ] 非決定要素の扱いを固定する（ID/時刻などの注入または検証方法）
+- [ ] 境界一貫性統合テストを1本先行追加し、実Router+実UseCase+実DBの通し検証を成立させる
 - [ ] 200の意味（accepted → confirmed）を統合境界テストで固定
 - [ ] エラー分類（404/400）を統合境界テストで固定
 - [ ] 冪等性（同一操作を2回）を統合境界テストで固定
-- [ ] 観測対象の副作用（orders/payments/inventory）を統合境界テストで固定
+- [ ] `customerId` を主要フィールド観測として固定する（POST入力値がGET応答で同値で観測される）
+- [ ] 観測対象の副作用（orders/payments/inventory）を統合境界テストで固定する（件数・状態・数量の変化をDBで検証）
 - [x] 境界観測一貫性テストは `backend/tests/boundary/` に集約する方針で固定
-- [ ] 既存の境界テストを `backend/tests/boundary/` に移動して整理
-- [ ] `backend/internal/adapter/handler/order_handler_test.go` の境界観測一貫性ケースを「Handler単体の責務」に限定し、統合ケースを `backend/tests/boundary/` へ移す
-- [ ] 境界観測一貫性テストに観測結果（HTTPステータス/レスポンス/後続状態/副作用）を明記する
-- [ ] CIで統合境界テストを常時実行し、rails通過条件に含める
+- [ ] 既存の境界テストを役割別に整理する（単体境界は `*_unit_test.go`、統合境界は `*_integration_test.go`）
+- [ ] `backend/internal/adapter/handler/order_handler_test.go` を「Handler単体の責務（HTTP変換/分類）」に限定し、通しシナリオは `backend/tests/boundary/*_integration_test.go` へ移す
+- [ ] 境界一貫性統合テストに観測結果を明記する（HTTPステータス/主要レスポンス項目/後続API状態/副作用DB）
+- [ ] CIで boundary テスト全体（unit/integration）を実行しつつ、統合境界テスト（`-run Integration`）を必須化して rails 通過条件に含める
 - [ ] `403` 分類は Phase 7（認可導入）で固定する
 - 注記: CI接続は Phase 0 の完了条件に従属（ここでは境界観測一貫性テストの内容拡張に専念する）
 
