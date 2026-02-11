@@ -99,6 +99,9 @@ func (u *OrderUsecase) ConfirmPayment(input ConfirmPaymentInput) (ConfirmPayment
 	if u.payments.IsConfirmed(input.OrderID, input.IdempotencyKey) {
 		return ConfirmPaymentOutput{OrderID: input.OrderID, PaymentStatus: "confirmed"}, nil
 	}
+	if order.Status == domain.OrderStatusConfirmed {
+		return ConfirmPaymentOutput{}, errors.New("already confirmed")
+	}
 	order.Status = domain.OrderStatusConfirmed
 	if err := u.orders.Update(order); err != nil {
 		return ConfirmPaymentOutput{}, err
