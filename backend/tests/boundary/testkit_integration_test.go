@@ -3,7 +3,10 @@ package boundary_test
 import (
 	"database/sql"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -29,8 +32,7 @@ func new境界統合Testkit(t *testing.T) *境界統合Testkit {
 		_ = db.Close()
 	})
 
-	ensure境界統合Schema(t, db)
-	reset境界統合Tables(t, db)
+	prepare境界統合DB(t, db)
 
 	orderRepo := dbinfra.NewOrderRepository(db)
 	paymentRepo := dbinfra.NewPaymentRepository(db)
@@ -75,40 +77,57 @@ func open境界統合DB(t *testing.T) (*sql.DB, bool) {
 	return db, true
 }
 
-func ensure境界統合Schema(t *testing.T, db *sql.DB) {
+// prepare境界統合DB は統合境界テスト用のDB準備/後片付け手順を固定する。
+// 手順: migrate適用 -> テーブルリセット -> seed投入 -> テスト終了時リセット。
+func prepare境界統合DB(t *testing.T, db *sql.DB) {
 	t.Helper()
 
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS orders (
-		  id TEXT PRIMARY KEY,
-		  customer_id TEXT,
-		  status TEXT NOT NULL,
-		  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-		CREATE TABLE IF NOT EXISTS order_items (
-		  order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-		  sku TEXT NOT NULL,
-		  quantity INTEGER NOT NULL CHECK (quantity >= 1),
-		  PRIMARY KEY (order_id, sku)
-		);
-		CREATE TABLE IF NOT EXISTS payments (
-		  order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-		  idempotency_key TEXT NOT NULL,
-		  status TEXT NOT NULL,
-		  PRIMARY KEY (order_id, idempotency_key)
-		);
-		CREATE TABLE IF NOT EXISTS inventory (
-		  sku TEXT PRIMARY KEY,
-		  quantity INTEGER NOT NULL CHECK (quantity >= 0)
-		);
-		ALTER TABLE orders
-		  ADD COLUMN IF NOT EXISTS customer_id TEXT;
-		UPDATE orders SET customer_id = 'unknown' WHERE customer_id IS NULL;
-		ALTER TABLE orders
-		  ALTER COLUMN customer_id SET NOT NULL;
-	`)
+	apply境界統合Migrations(t, db)
+	reset境界統合Tables(t, db)
+	seed境界統合DB(t, db)
+
+	t.Cleanup(func() {
+		reset境界統合Tables(t, db)
+	})
+}
+
+func apply境界統合Migrations(t *testing.T, db *sql.DB) {
+	t.Helper()
+
+	paths, err := filepath.Glob("../../migrations/*.up.sql")
 	if err != nil {
-		t.Fatalf("failed to ensure schema: %v", err)
+		t.Fatalf("failed to list migration files: %v", err)
+	}
+	if len(paths) == 0 {
+		t.Fatalf("migration files not found: ../../migrations/*.up.sql")
+	}
+	sort.Strings(paths)
+
+	for _, path := range paths {
+		// seedマイグレーションは毎テストで再投入するため、初期適用では除外する。
+		if strings.HasSuffix(path, "_seed_inventory.up.sql") {
+			continue
+		}
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatalf("failed to read migration file (%s): %v", path, readErr)
+		}
+		if _, execErr := db.Exec(string(content)); execErr != nil {
+			t.Fatalf("failed to apply migration (%s): %v", path, execErr)
+		}
+	}
+}
+
+func seed境界統合DB(t *testing.T, db *sql.DB) {
+	t.Helper()
+
+	seedPath := "../../migrations/0002_seed_inventory.up.sql"
+	content, err := os.ReadFile(seedPath)
+	if err != nil {
+		t.Fatalf("failed to read seed file (%s): %v", seedPath, err)
+	}
+	if _, err := db.Exec(string(content)); err != nil {
+		t.Fatalf("failed to apply seed (%s): %v", seedPath, err)
 	}
 }
 
@@ -120,5 +139,13 @@ func reset境界統合Tables(t *testing.T, db *sql.DB) {
 	`)
 	if err != nil {
 		t.Fatalf("failed to truncate tables: %v", err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM inventory`).Scan(&count); err != nil {
+		t.Fatalf("failed to count inventory rows after reset: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("reset must empty inventory table, got %d rows", count)
 	}
 }
