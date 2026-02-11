@@ -90,12 +90,26 @@ func TestCreateOrder_異常系_不正な入力(t *testing.T) {
 	}
 }
 
+func TestCreateOrder_異常系_CustomerIDが空(t *testing.T) {
+	orders := newMemoryOrderRepo()
+	payments := newMemoryPaymentRepo()
+	uc := NewOrderUsecase(orders, payments, func() string { return "order-1" })
+
+	_, err := uc.CreateOrder(CreateOrderInput{
+		CustomerID: "",
+		Items:      []domain.OrderItem{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
 func TestGetOrder_存在する場合(t *testing.T) {
 	orders := newMemoryOrderRepo()
 	payments := newMemoryPaymentRepo()
 	uc := NewOrderUsecase(orders, payments, func() string { return "order-1" })
 
-	order, _ := domain.NewOrder("order-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
 	_ = orders.Create(order)
 
 	got, ok := uc.GetOrder("order-1")
@@ -123,7 +137,7 @@ func TestCancelOrder_正常系(t *testing.T) {
 	payments := newMemoryPaymentRepo()
 	uc := NewOrderUsecase(orders, payments, func() string { return "order-1" })
 
-	order, _ := domain.NewOrder("order-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
 	_ = orders.Create(order)
 
 	canceled, err := uc.CancelOrder("order-1")
@@ -151,7 +165,7 @@ func TestConfirmPayment_正常系(t *testing.T) {
 	payments := newMemoryPaymentRepo()
 	uc := NewOrderUsecase(orders, payments, func() string { return "order-1" })
 
-	order, _ := domain.NewOrder("order-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
 	_ = orders.Create(order)
 
 	out, err := uc.ConfirmPayment(ConfirmPaymentInput{OrderID: "order-1", Amount: 100, IdempotencyKey: "k-1"})

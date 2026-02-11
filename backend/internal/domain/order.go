@@ -21,15 +21,19 @@ type OrderItem struct {
 
 // Order は注文の中核エンティティ。
 type Order struct {
-	ID     string
-	Status OrderStatus
-	Items  []OrderItem
+	ID         string
+	CustomerID string
+	Status     OrderStatus
+	Items      []OrderItem
 }
 
 // NewOrder は入力を検証して Order を作成する。
-func NewOrder(id string, items []OrderItem) (Order, error) {
+func NewOrder(id, customerID string, items []OrderItem) (Order, error) {
 	if id == "" {
 		return Order{}, errors.New("id is required")
+	}
+	if customerID == "" {
+		return Order{}, errors.New("customer id is required")
 	}
 	if len(items) == 0 {
 		return Order{}, errors.New("items is required")
@@ -47,5 +51,5 @@ func NewOrder(id string, items []OrderItem) (Order, error) {
 		}
 		seen[item.SKU] = struct{}{}
 	}
-	return Order{ID: id, Status: OrderStatusAccepted, Items: items}, nil
+	return Order{ID: id, CustomerID: customerID, Status: OrderStatusAccepted, Items: items}, nil
 }

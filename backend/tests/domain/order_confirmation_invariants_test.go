@@ -69,7 +69,7 @@ func (r *確定不変条件用PaymentRepo) confirmedCount(orderID string) int {
 }
 
 func TestConfirmPayment_不変条件_再確定は失敗し状態と副作用が増えない(t *testing.T) {
-	order, _ := domain.NewOrder("order-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
 	orders := &確定不変条件用OrderRepo{order: order}
 	payments := new確定不変条件用PaymentRepo()
 	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
@@ -120,7 +120,7 @@ func TestConfirmPayment_不変条件_再確定は失敗し状態と副作用が�
 }
 
 func TestConfirmPayment_不変条件_同一キー再送で支払いが二重計上されない(t *testing.T) {
-	order, _ := domain.NewOrder("order-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
 	orders := &確定不変条件用OrderRepo{order: order}
 	payments := new確定不変条件用PaymentRepo()
 	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })

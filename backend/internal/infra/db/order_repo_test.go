@@ -16,7 +16,7 @@ func TestOrderRepository_作成と取得(t *testing.T) {
 	resetTables(t, db)
 
 	repo := NewOrderRepository(db)
-	order, _ := domain.NewOrder("order-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
 
 	if err := repo.Create(order); err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -40,7 +40,7 @@ func TestOrderRepository_更新(t *testing.T) {
 	resetTables(t, db)
 
 	repo := NewOrderRepository(db)
-	order, _ := domain.NewOrder("order-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
 	_ = repo.Create(order)
 
 	order.Status = domain.OrderStatusCanceled

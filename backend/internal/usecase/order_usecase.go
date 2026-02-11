@@ -46,7 +46,7 @@ type CreateOrderOutput struct {
 
 // CreateOrder は注文を作成する。
 func (u *OrderUsecase) CreateOrder(input CreateOrderInput) (CreateOrderOutput, error) {
-	order, err := domain.NewOrder(u.idGen(), input.Items)
+	order, err := domain.NewOrder(u.idGen(), input.CustomerID, input.Items)
 	if err != nil {
 		return CreateOrderOutput{}, err
 	}
