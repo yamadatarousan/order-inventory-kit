@@ -2,6 +2,9 @@ package db
 
 import "testing"
 
+// このテストは InventoryRepository のDB実装が基本仕様を満たすことを固定する。
+// 仕様対象: GetBySKU / Reserve / Release の正常系と在庫不足時の失敗時挙動。
+// 根拠: 在庫更新実装の回収や最適化を行っても、UseCase 観点の基本動作を維持するため。
 func TestInventoryRepository_GetBySKU_存在する場合(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()

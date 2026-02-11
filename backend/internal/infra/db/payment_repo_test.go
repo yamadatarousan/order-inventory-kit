@@ -2,6 +2,9 @@ package db
 
 import "testing"
 
+// このテストは PaymentRepository の確定判定仕様を固定する。
+// 仕様対象: Confirm 前後で IsConfirmed の結果が期待どおりに変化すること。
+// 根拠: 決済の冪等制御に必要な判定結果が実装変更で崩れないようにするため。
 func TestPaymentRepository_確定と確認(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()

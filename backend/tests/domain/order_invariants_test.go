@@ -6,6 +6,9 @@ import (
 	"order-inventory-kit/internal/domain"
 )
 
+// このテストは Order ドメイン不変条件を固定する。
+// 仕様対象: 初期状態 accepted、明細数量制約、同一SKU重複禁止。
+// 根拠: 注文生成規則の変更でドメイン性質が崩れないようにするため。
 func TestNewOrder_不変条件_初期状態はaccepted(t *testing.T) {
 	order, err := domain.NewOrder("order-1", []domain.OrderItem{
 		{SKU: "sku-1", Quantity: 1},

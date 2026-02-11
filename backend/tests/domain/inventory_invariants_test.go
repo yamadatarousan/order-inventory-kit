@@ -6,6 +6,9 @@ import (
 	"order-inventory-kit/internal/domain"
 )
 
+// このテストは Inventory ドメイン不変条件を固定する。
+// 仕様対象: 在庫数量の非負制約、確保時の下限維持、戻し時の数量増加。
+// 根拠: ドメイン実装の変更で在庫の基本性質が崩れないようにするため。
 func TestNewInventory_正常系(t *testing.T) {
 	inv, err := domain.NewInventory("sku-1", 10)
 	if err != nil {

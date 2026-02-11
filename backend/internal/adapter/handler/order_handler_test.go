@@ -13,6 +13,9 @@ import (
 	"order-inventory-kit/internal/usecase"
 )
 
+// このテストは OrderHandler のHTTP境界仕様を固定する。
+// 仕様対象: 正常系と不正入力/未存在時のHTTPステータス分類（200/400/404）。
+// 根拠: UseCase 実装が変わっても外部境界の振る舞い互換を維持するため。
 type stubUsecase struct {
 	createOrderFunc    func(input usecase.CreateOrderInput) (usecase.CreateOrderOutput, error)
 	getOrderFunc       func(id string) (domain.Order, bool)

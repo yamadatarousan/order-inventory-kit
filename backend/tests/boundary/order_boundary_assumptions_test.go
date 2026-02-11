@@ -14,6 +14,9 @@ import (
 	"order-inventory-kit/internal/usecase"
 )
 
+// このテストは 境界観測一貫性 の最小仕様を固定する。
+// 仕様対象: POST/GET連続呼び出し時の状態整合と、404/400の分類。
+// 根拠: OpenAPI差分では検出しづらい境界の振る舞い回帰をCIで検出するため。
 type 境界前提用UsecaseStub struct {
 	orders map[string]domain.Order
 }

@@ -6,6 +6,9 @@ import (
 	"order-inventory-kit/internal/domain"
 )
 
+// このテストは OrderUsecase の主要ユースケース仕様を固定する。
+// 仕様対象: 注文作成/参照/キャンセル/決済確定の状態遷移と冪等性。
+// 根拠: 下位実装変更時にも業務フローの期待挙動を維持するため。
 type memoryOrderRepo struct {
 	items map[string]domain.Order
 }

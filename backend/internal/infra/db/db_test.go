@@ -8,6 +8,9 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// このテスト補助は DBリポジトリテストの実行前提を固定する。
+// 対象: テスト用DB接続、スキーマ準備、テーブル初期化。
+// 根拠: テストごとの前提差異をなくし、失敗原因を実装差分に限定するため。
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_URL")

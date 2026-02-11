@@ -2,6 +2,10 @@ package db
 
 import "testing"
 
+// このテストは InventoryRepository の最小契約を固定する。
+// 契約対象: GetBySKU / Reserve / Release の戻り値・エラー・永続状態（DB在庫数量）。
+// 根拠: UseCase が Repository 実装を差し替えても同じ振る舞いを前提にできるようにするため。
+// 失敗時に在庫数量が変化しないことを含め、回帰をCIで検出する。
 type inventoryRepositoryContract interface {
 	GetBySKU(sku string) (InventorySnapshot, bool)
 	Reserve(sku string, quantity int) (InventorySnapshot, error)

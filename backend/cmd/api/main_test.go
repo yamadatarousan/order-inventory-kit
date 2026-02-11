@@ -2,6 +2,9 @@ package main
 
 import "testing"
 
+// このテストは API起動設定の最小仕様を固定する。
+// 仕様対象: 環境変数未設定時のデフォルト値適用と、設定時の上書き優先。
+// 根拠: 実行環境差異で起動設定が意図せず変化しないようにするため。
 func TestLoadConfig_環境変数が未設定ならデフォルト値を使う(t *testing.T) {
 	t.Setenv("API_ADDR", "")
 	t.Setenv("DATABASE_URL", "")

@@ -7,6 +7,9 @@ import (
 	"order-inventory-kit/internal/domain"
 )
 
+// このテストは InventoryUsecase の振る舞い仕様を固定する。
+// 仕様対象: Reserve/Release の成功時状態遷移と、在庫不足・不正入力・未存在SKUの失敗。
+// 根拠: Repository 実装差し替え時にもユースケース責務を維持するため。
 type memoryInventoryRepo struct {
 	items map[string]domain.Inventory
 }

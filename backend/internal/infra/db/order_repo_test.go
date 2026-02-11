@@ -6,6 +6,9 @@ import (
 	"order-inventory-kit/internal/domain"
 )
 
+// このテストは OrderRepository の永続化仕様を固定する。
+// 仕様対象: 注文の作成・取得・更新で Order の状態と明細が正しく保存されること。
+// 根拠: 保存方式を変更しても注文状態遷移の基盤となるデータ整合を維持するため。
 func TestOrderRepository_作成と取得(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()

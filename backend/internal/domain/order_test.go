@@ -2,6 +2,9 @@ package domain
 
 import "testing"
 
+// このテストは Order ドメイン生成時の不変条件を固定する。
+// 仕様対象: ID/明細入力制約、初期状態 accepted、同一SKU重複禁止。
+// 根拠: 生成ロジックの変更で注文ドメインの基本性質が崩れないようにするため。
 func TestNewOrder_正常系(t *testing.T) {
 	items := []OrderItem{{SKU: "sku-1", Quantity: 1}}
 	order, err := NewOrder("order-1", items)
