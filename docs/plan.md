@@ -270,26 +270,29 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [ ] 境界一貫性統合テストの最小DoDを明文化する（完了判定に使う必須項目を定義する）
 - [ ] 「統合境界テストの前提を定義する」の成果物形式を固定する（記載先とテンプレ: `docs/testing-roles.md`）
 - [ ] `backend/tests/boundary` を二層化する（`*_unit_test.go` / `*_integration_test.go`）
-- [ ] 統合境界テスト用の testkit を追加する（実Router + 実UseCase + 実DB Repository を組み立てる）
+- [ ] 統合境界テスト用の testkit を追加する（実Router + 実UseCase + 実DB Repository を組み立て、Stub前提と分離する）
 - [ ] 統合境界テスト用の DB 初期化/後片付け手順を固定する（migrate適用、seed投入、テーブルリセット）
 - [ ] 非決定要素の扱いを固定する（ID/時刻などの注入または検証方法）
-- [ ] 境界一貫性統合テストを1本先行追加し、実Router+実UseCase+実DBの通し検証を成立させる
+- [ ] 境界一貫性統合テストを1本先行追加し、実Router+実UseCase+実DBで通し検証できることを固定する（`backend/tests/boundary/*_integration_test.go`）
 - [ ] 200の意味（accepted → confirmed）を統合境界テストで固定
 - [ ] エラー分類（404/400）を統合境界テストで固定
 - [ ] 冪等性（同一操作を2回）を統合境界テストで固定
-- [ ] `customerId` を主要フィールド観測として固定する（POST入力値がGET応答で同値で観測される）
-- [ ] 観測対象の副作用（orders/payments/inventory）を統合境界テストで固定する（件数・状態・数量の変化をDBで検証）
+- [ ] `customerId` を主要フィールド観測として固定する（POST /orders 入力値と GET /orders/{id} 応答値の同値を検証する）
+- [ ] 観測対象の副作用（orders/payments/inventory）を統合境界テストで固定する（orders状態・payments件数・inventory数量をDBで検証する）
 - [x] 境界観測一貫性テストは `backend/tests/boundary/` に集約する方針で固定
 - [ ] 既存の境界テストを役割別に整理する（単体境界は `*_unit_test.go`、統合境界は `*_integration_test.go`）
-- [ ] `backend/internal/adapter/handler/order_handler_test.go` を「Handler単体の責務（HTTP変換/分類）」に限定し、通しシナリオは `backend/tests/boundary/*_integration_test.go` へ移す
+- [ ] `backend/internal/adapter/handler/order_handler_test.go` を「Handler単体の責務（HTTP変換/分類）」に限定し、通しシナリオを残さない
+- [ ] `backend/internal/adapter/handler/order_handler_test.go` から移した通しシナリオを `backend/tests/boundary/*_integration_test.go` で固定する
 - [ ] 境界一貫性統合テストに観測結果を明記する（HTTPステータス/主要レスポンス項目/後続API状態/副作用DB）
-- [ ] CIで boundary テスト全体（unit/integration）を実行しつつ、統合境界テスト（`-run Integration`）を必須化して rails 通過条件に含める
+- [ ] CIで boundary テスト全体（unit/integration）を実行しつつ、統合境界テスト（`go test ./tests/boundary -run Integration`）を必須化して rails 通過条件に含める（Integrationテスト0件を失敗扱いにする）
 - [ ] `403` 分類は Phase 7（認可導入）で固定する
 - 注記: CI接続は Phase 0 の完了条件に従属（ここでは境界観測一貫性テストの内容拡張に専念する）
 - 運用ルール: DoDは最小の完了判定に限定し、DoDから漏れたが必要な項目は未完了タスクとして追加して管理する
 
 #### 成果物
 - `backend/tests/boundary/` の境界観測一貫性テスト
+- `docs/testing-roles.md` の「Phase 5 統合境界テスト前提テンプレ」（対象API/観測項目/非対象/データ準備/後片付け/非決定要素）
+- `docs/testing-roles.md` の「Phase 5 最小DoD」（完了判定の必須項目）
 
 #### セルフチェック
 - 契約:
