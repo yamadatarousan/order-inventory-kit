@@ -1,110 +1,91 @@
-# Webシステム スターターキット案（Frontend: TypeScript + React / Backend: Go + Gin）
-
-作業ディレクトリ直下の想定（`/Users/user/Development/order-inventory-kit`）。
+# 実装仕様（Spec）
 
 ## 目的
-- 生成（探索）と統合（固定化）を分離し、CIが統合可否を機械判定できる構成にする。
-- 境界（契約）・ドメイン（不変条件）・構造（依存方向/越境）を成果物と検証で固定する。
+- この文書は、AIと人間が実装判断に使う「採用済み具体仕様（What must be true）」を定義する
+- 方針説明は `docs/context.md`、方針の写像手順は `docs/context-mapping.md`、作業プロトコルは `AGENTS.md` を参照する
 
----
+## スコープ
+- 対象: 技術スタック、ディレクトリ構造、レイヤ責務、一次情報の参照順、変更時の必須条件
+- 非対象: タスク順序や進行管理（`docs/plan.md`）、テスト運用詳細（`docs/testing-roles.md`）
 
-## 技術スタック（最小）
+## 一次情報の参照順
+1. 契約: `contracts/openapi.yaml`
+2. 実装計画: `docs/plan.md`
+3. テスト運用規約: `docs/testing-roles.md`
+4. 実装: `backend/`, `frontend/`, `tools/`
+
+衝突時の扱い:
+- API境界の事実は `contracts/openapi.yaml` を優先する
+- タスクの完了/未完了は `docs/plan.md` を優先する
+- テスト分類とDoDは `docs/testing-roles.md` を優先する
+
+## 採用技術スタック（固定）
+### Backend
+- Go
+- Gin
+- PostgreSQL
+- マイグレーション: SQLファイル（`backend/migrations/*.sql`）
 
 ### Frontend
 - TypeScript
 - React
 - Vite
-- React Router
-- APIクライアント：OpenAPI生成（例：openapi-typescript + openapi-fetch）
-- テスト：Vitest + Testing Library
-- 型/品質：ESLint + Prettier
-  
-### Backend
-- Go
-- Gin
-- OpenAPI生成：oapi-codegen
-- DB（例）：PostgreSQL
-- マイグレーション：golang-migrate
-- テスト：go test（ユニット/統合）
+- OpenAPI生成型を利用（`frontend/src/api/schema.d.ts`）
 
-### 契約・境界
-- OpenAPI（単一参照点）
-- 破壊的変更の移行定義（YAML）
-- 差分検査：openapi-diff（例：oasdiff）
+### 契約/生成/検査
+- OpenAPI: `contracts/openapi.yaml`（単一参照点）
+- Go生成: `oapi-codegen`（生成物: `backend/internal/adapter/generated/openapi.gen.go`）
+- TS生成: `openapi-typescript`（生成物: `frontend/src/api/schema.d.ts`）
+- 差分/生成ツール: `tools/openapi/`
+- 構造検査ツール: `tools/arch/`
+- CI: `.github/workflows/ci.yml`
 
-### 構造検査
-- 依存方向・越境の静的検査
-  - Go：go list + custom lint（または depguard / golangci-lint）
-  - TS：eslintのimport/no-restricted-paths
-
-### CI（固定化の関所）
-- GitHub Actions
-  - OpenAPI差分 → 破壊的変更なら移行定義必須
-  - 型/クライアント生成の整合
-  - 構造検査（依存方向・越境）
-  - ドメイン不変条件テスト
-  - 境界観測一貫性テスト
-  - 実ツール導入までは雛形（Phase 0で実運用化）
-
----
-
-## ディレクトリ構造（案）
-
-```
+## ディレクトリ構造（固定）
+```text
 .
 ├── contracts/
-│   ├── openapi.yaml                # 境界の単一参照点
+│   ├── openapi.yaml
 │   └── migrations/
-│       └── 2026-02-04-...yaml       # 破壊的変更の移行定義
-│
 ├── backend/
-│   ├── cmd/
-│   │   └── api/                     # エントリ
+│   ├── cmd/api/
 │   ├── internal/
-│   │   ├── adapter/
-│   │   │   ├── handler/             # Gin handlers (HTTP)
-│   │   ├── usecase/                 # アプリケーション層
-│   │   ├── domain/                  # エンティティ/値オブジェクト/不変条件
-│   │   └── infra/
-│   │       └── db/                  # DB実装
-│   ├── tests/
-│   │   ├── boundary/                # 境界観測一貫性テスト（HTTP）
-│   │   └── domain/                  # 不変条件テスト
-│   └── tools/
-│       └── arch-rules/              # 依存方向/越境の検査定義
-│
-├── frontend/
-│   ├── src/
-│   │   ├── app/                     # ルーティング/アプリ組み立て
-│   │   ├── features/                # 画面・ユースケース単位
-│   │   ├── domain/                  # UI側のドメインモデル（必要なら）
-│   │   ├── api/                     # 生成されたAPIクライアント
-│   │   └── shared/                  # UI共通
-│   └── tests/
-│       └── boundary/                # UI側の境界観測一貫性（必要なら）
-│
-├── tools/
-│   ├── openapi/                     # 生成/差分検査スクリプト
-│   └── arch/                        # 依存方向/越境の検査
-│
-├── .github/workflows/ci.yml         # 固定化の関所
-├── README.md
-└── AGENTS.md
+│   │   ├── adapter/{generated,handler}/
+│   │   ├── usecase/
+│   │   ├── domain/
+│   │   └── infra/db/
+│   ├── migrations/
+│   └── tests/{domain,boundary}/
+├── frontend/src/api/
+├── tools/{openapi,arch,db}/
+└── .github/workflows/ci.yml
 ```
 
----
+## レイヤ責務（固定）
+- `adapter/handler`: HTTP変換と分類
+- `usecase`: アプリケーションフロー
+- `domain`: 不変条件とドメイン性質
+- `infra/db`: 永続化実装
 
-## 固定化ルールの最小セット（CI順序の例）
+依存方向:
+- `handler -> usecase -> domain`
+- `infra/db` は `domain` に依存してよい
 
-1. OpenAPI差分検査
-   - 破壊的変更があれば `contracts/migrations/*.yaml` の存在と形式を要求
-2. クライアント/型生成の整合
-3. 構造検査（依存方向・越境）
-4. ドメイン不変条件テスト
-5. 境界観測一貫性テスト（外形で検出できない互換性）
+## テスト分類（固定）
+- 不変条件テスト: `backend/tests/domain/`
+- 境界一貫性統合テスト/境界単体テスト: `backend/tests/boundary/`
+- `internal/*_test.go` は層ローカル仕様の検証を主目的とする
 
----
+## 変更時の必須条件
+- OpenAPI変更時:
+  - 生成物を同期し、CIの生成整合チェックを通す
+- 破壊的変更時:
+  - `contracts/migrations/` に移行定義を追加する
+- DBスキーマ変更時:
+  - `backend/migrations/` を追加し、DB関連テストを更新する
+- テスト追加/変更時:
+  - `docs/testing-roles.md` の分類とDoDに従う
 
-## 補足
-- 生成物はCIで再生成し、差分が出たら失敗させる（固定化のため）。
-- 依存方向ルールは「探索空間の制約」でもあり「固定化条件」でもある。
+## 非目標（この文書で扱わない）
+- フェーズの実行順、担当、進捗管理
+- 実装手順の詳細
+- 背景理論の説明
