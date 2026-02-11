@@ -16,6 +16,7 @@
 
 ## 現在の全体ドキュメント
 - `docs/context.md`
+- `docs/context-mapping.md`
 - `docs/spec.md`
 - `docs/plan.md`
 - `docs/testing-roles.md`
