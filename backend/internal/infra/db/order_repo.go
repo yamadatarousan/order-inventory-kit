@@ -20,8 +20,8 @@ func NewOrderRepository(db *sql.DB) *OrderRepository {
 // Create は注文を保存する。
 func (r *OrderRepository) Create(order domain.Order) error {
 	_, err := r.db.Exec(`
-		INSERT INTO orders (id, status) VALUES ($1, $2)
-	`, order.ID, order.Status)
+		INSERT INTO orders (id, customer_id, status) VALUES ($1, $2, $3)
+	`, order.ID, order.CustomerID, order.Status)
 	if err != nil {
 		return err
 	}
@@ -39,11 +39,11 @@ func (r *OrderRepository) Create(order domain.Order) error {
 // Get は注文を取得する。
 func (r *OrderRepository) Get(id string) (domain.Order, bool) {
 	row := r.db.QueryRow(`
-		SELECT id, status FROM orders WHERE id = $1
+		SELECT id, customer_id, status FROM orders WHERE id = $1
 	`, id)
 
 	var order domain.Order
-	if err := row.Scan(&order.ID, &order.Status); err != nil {
+	if err := row.Scan(&order.ID, &order.CustomerID, &order.Status); err != nil {
 		return domain.Order{}, false
 	}
 

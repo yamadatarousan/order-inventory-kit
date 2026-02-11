@@ -244,7 +244,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] `backend/internal/usecase/inventory_usecase_test.go` をユースケース局所仕様（入出力/呼び出し）に限定して整理する
 - [x] CustomerID は Domain に持たせる方針で固定
 - [x] Order に CustomerID を保持し、NewOrder で必須化する
-- [ ] Order.CustomerID の不変条件を境界/永続化へ反映する（DB列追加・Repository保存取得・OpenAPI反映）
+- [x] Order.CustomerID の不変条件を境界/永続化へ反映する（DB列追加・Repository保存取得・OpenAPI反映）
 - 注記: CI接続は Phase 0 の完了条件に従属（ここでは不変条件テストの内容拡張に専念する）
 
 #### 成果物

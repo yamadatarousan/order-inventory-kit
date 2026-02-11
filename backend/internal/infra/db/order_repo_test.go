@@ -28,6 +28,9 @@ func TestOrderRepository_作成と取得(t *testing.T) {
 	if got.Status != domain.OrderStatusAccepted {
 		t.Fatalf("expected accepted, got %s", got.Status)
 	}
+	if got.CustomerID != "c-1" {
+		t.Fatalf("expected customer id c-1, got %s", got.CustomerID)
+	}
 	if len(got.Items) != 1 || got.Items[0].SKU != "sku-1" {
 		t.Fatalf("expected items to be saved")
 	}

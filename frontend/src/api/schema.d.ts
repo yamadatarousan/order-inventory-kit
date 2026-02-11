@@ -96,6 +96,7 @@ export interface components {
         };
         Order: {
             id: string;
+            customerId: string;
             status: components["schemas"]["OrderStatus"];
             items: components["schemas"]["OrderItem"][];
         };

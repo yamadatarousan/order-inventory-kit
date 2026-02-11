@@ -165,10 +165,13 @@ components:
       type: object
       required:
         - id
+        - customerId
         - status
         - items
       properties:
         id:
+          type: string
+        customerId:
           type: string
         status:
           $ref: '#/components/schemas/OrderStatus'

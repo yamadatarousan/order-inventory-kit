@@ -45,6 +45,7 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS orders (
 		  id TEXT PRIMARY KEY,
+		  customer_id TEXT,
 		  status TEXT NOT NULL,
 		  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
@@ -64,6 +65,11 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  sku TEXT PRIMARY KEY,
 		  quantity INTEGER NOT NULL CHECK (quantity >= 0)
 		);
+		ALTER TABLE orders
+		  ADD COLUMN IF NOT EXISTS customer_id TEXT;
+		UPDATE orders SET customer_id = 'unknown' WHERE customer_id IS NULL;
+		ALTER TABLE orders
+		  ALTER COLUMN customer_id SET NOT NULL;
 	`)
 	if err != nil {
 		t.Fatalf("failed to ensure schema: %v", err)

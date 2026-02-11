@@ -11,7 +11,7 @@ func TestPaymentRepository_確定と確認(t *testing.T) {
 	ensureSchema(t, db)
 	resetTables(t, db)
 
-	_, err := db.Exec(`INSERT INTO orders (id, status) VALUES ($1, $2)`, "order-1", "accepted")
+	_, err := db.Exec(`INSERT INTO orders (id, customer_id, status) VALUES ($1, $2, $3)`, "order-1", "c-1", "accepted")
 	if err != nil {
 		t.Fatalf("failed to insert order: %v", err)
 	}

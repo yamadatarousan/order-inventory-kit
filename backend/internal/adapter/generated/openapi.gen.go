@@ -58,9 +58,10 @@ type Error struct {
 
 // Order defines model for Order.
 type Order struct {
-	Id     string      `json:"id"`
-	Items  []OrderItem `json:"items"`
-	Status OrderStatus `json:"status"`
+	CustomerId string      `json:"customerId"`
+	Id         string      `json:"id"`
+	Items      []OrderItem `json:"items"`
+	Status     OrderStatus `json:"status"`
 }
 
 // OrderItem defines model for OrderItem.
