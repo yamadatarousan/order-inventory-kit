@@ -118,3 +118,43 @@ func TestConfirmPayment_不変条件_再確定は失敗し状態と副作用が�
 		t.Fatalf("payment keys must not increase, got %d", payments.confirmedCount("order-1"))
 	}
 }
+
+func TestConfirmPayment_不変条件_同一キー再送で支払いが二重計上されない(t *testing.T) {
+	order, _ := domain.NewOrder("order-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	orders := &確定不変条件用OrderRepo{order: order}
+	payments := new確定不変条件用PaymentRepo()
+	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
+
+	_, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
+		OrderID:        "order-1",
+		Amount:         100,
+		IdempotencyKey: "k-1",
+	})
+	if err != nil {
+		t.Fatalf("first confirm must succeed: %v", err)
+	}
+
+	out, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
+		OrderID:        "order-1",
+		Amount:         100,
+		IdempotencyKey: "k-1",
+	})
+	if err != nil {
+		t.Fatalf("same-key replay must be idempotent: %v", err)
+	}
+	if out.PaymentStatus != "confirmed" {
+		t.Fatalf("expected confirmed, got %s", out.PaymentStatus)
+	}
+	if orders.order.Status != domain.OrderStatusConfirmed {
+		t.Fatalf("status must remain confirmed, got %s", orders.order.Status)
+	}
+	if orders.updateCalls != 1 {
+		t.Fatalf("order update side effect must not increase, got %d", orders.updateCalls)
+	}
+	if payments.confirmCalls != 1 {
+		t.Fatalf("payment confirm side effect must not increase, got %d", payments.confirmCalls)
+	}
+	if payments.confirmedCount("order-1") != 1 {
+		t.Fatalf("payment keys must not increase, got %d", payments.confirmedCount("order-1"))
+	}
+}
