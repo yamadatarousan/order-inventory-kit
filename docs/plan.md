@@ -237,11 +237,11 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] 二重確定禁止（再確定時に状態・副作用が増えない）を不変条件テストで固定する
 - [x] 支払い二重計上禁止を不変条件テストで固定する
 - [x] 不変条件テストは `backend/tests/domain/` に集約する方針で固定
-- [ ] 既存のドメインテストを `backend/tests/domain/` に移動して整理
-- [ ] `backend/internal/domain/order_test.go` を `backend/tests/domain/` に移動する
-- [ ] `backend/internal/usecase/order_usecase_test.go` の不変条件ケースを `backend/tests/domain/` に移動する
-- [ ] `backend/internal/usecase/inventory_usecase_test.go` の不変条件ケースを `backend/tests/domain/` に移動する
-- [ ] `backend/internal/usecase/inventory_usecase_test.go` をユースケース局所仕様（入出力/呼び出し）に限定して整理する
+- [x] 既存のドメインテストを `backend/tests/domain/` に移動して整理
+- [x] `backend/internal/domain/order_test.go` を `backend/tests/domain/` に移動する
+- [x] `backend/internal/usecase/order_usecase_test.go` の不変条件ケースを `backend/tests/domain/` に移動する
+- [x] `backend/internal/usecase/inventory_usecase_test.go` の不変条件ケースを `backend/tests/domain/` に移動する
+- [x] `backend/internal/usecase/inventory_usecase_test.go` をユースケース局所仕様（入出力/呼び出し）に限定して整理する
 - [x] CustomerID は Domain に持たせる方針で固定
 - [ ] Order に CustomerID を保持し、NewOrder で必須化する
 - 注記: CI接続は Phase 0 の完了条件に従属（ここでは不変条件テストの内容拡張に専念する）

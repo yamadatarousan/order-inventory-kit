@@ -70,23 +70,6 @@ func TestReserveInventory_正常系(t *testing.T) {
 	}
 }
 
-func TestReserveInventory_異常系_在庫不足は失敗(t *testing.T) {
-	repo := newMemoryInventoryRepo()
-	inv, _ := domain.NewInventory("sku-1", 1)
-	repo.items["sku-1"] = inv
-
-	uc := NewInventoryUsecase(repo)
-	_, err := uc.ReserveInventory(ReserveInventoryInput{SKU: "sku-1", Quantity: 2})
-	if err == nil {
-		t.Fatalf("expected error")
-	}
-
-	saved, _ := repo.GetBySKU("sku-1")
-	if saved.Quantity != 1 {
-		t.Fatalf("expected quantity to remain 1, got %d", saved.Quantity)
-	}
-}
-
 func TestReserveInventory_異常系_存在しないSKUは失敗(t *testing.T) {
 	repo := newMemoryInventoryRepo()
 	uc := NewInventoryUsecase(repo)

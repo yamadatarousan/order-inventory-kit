@@ -40,3 +40,28 @@ func TestNewOrder_不変条件_同一SKUの重複は禁止(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 }
+
+func TestNewOrder_不変条件_IDは必須(t *testing.T) {
+	_, err := domain.NewOrder("", []domain.OrderItem{
+		{SKU: "sku-1", Quantity: 1},
+	})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
+func TestNewOrder_不変条件_明細は1件以上必須(t *testing.T) {
+	_, err := domain.NewOrder("order-1", []domain.OrderItem{})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
+func TestNewOrder_不変条件_SKUは必須(t *testing.T) {
+	_, err := domain.NewOrder("order-1", []domain.OrderItem{
+		{SKU: "", Quantity: 1},
+	})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}

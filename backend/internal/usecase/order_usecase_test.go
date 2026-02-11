@@ -188,21 +188,3 @@ func TestConfirmPayment_異常系_注文が存在しない(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 }
-
-func TestConfirmPayment_冪等(t *testing.T) {
-	orders := newMemoryOrderRepo()
-	payments := newMemoryPaymentRepo()
-	uc := NewOrderUsecase(orders, payments, func() string { return "order-1" })
-
-	order, _ := domain.NewOrder("order-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
-	_ = orders.Create(order)
-
-	_, _ = uc.ConfirmPayment(ConfirmPaymentInput{OrderID: "order-1", Amount: 100, IdempotencyKey: "k-1"})
-	out, err := uc.ConfirmPayment(ConfirmPaymentInput{OrderID: "order-1", Amount: 100, IdempotencyKey: "k-1"})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if out.PaymentStatus != "confirmed" {
-		t.Fatalf("expected confirmed, got %s", out.PaymentStatus)
-	}
-}
