@@ -26,4 +26,18 @@ func TestIntegration_OrderBoundary_受け皿(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
+
+	var res struct {
+		OrderID string `json:"orderId"`
+		Status  string `json:"status"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if res.OrderID != "integration-order-1" {
+		t.Fatalf("order id must be deterministic in integration test, got %s", res.OrderID)
+	}
+	if res.Status != "accepted" {
+		t.Fatalf("expected accepted, got %s", res.Status)
+	}
 }

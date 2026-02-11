@@ -2,10 +2,10 @@ package boundary_test
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -37,11 +37,11 @@ func new境界統合Testkit(t *testing.T) *境界統合Testkit {
 	orderRepo := dbinfra.NewOrderRepository(db)
 	paymentRepo := dbinfra.NewPaymentRepository(db)
 
-	nextID := 0
-	idGen := func() string {
-		nextID++
-		return "integration-order-" + strconv.Itoa(nextID)
-	}
+	idGen := new固定IDGenerator(
+		"integration-order-1",
+		"integration-order-2",
+		"integration-order-3",
+	)
 	uc := usecase.NewOrderUsecase(orderRepo, paymentRepo, idGen)
 
 	gin.SetMode(gin.TestMode)
@@ -52,6 +52,20 @@ func new境界統合Testkit(t *testing.T) *境界統合Testkit {
 	return &境界統合Testkit{
 		DB:     db,
 		Router: router,
+	}
+}
+
+// new固定IDGenerator は非決定要素（ID）の扱いを固定する。
+// 統合境界テストでは実行ごとの差分を避けるため、IDは固定列から順に払い出す。
+func new固定IDGenerator(ids ...string) func() string {
+	next := 0
+	return func() string {
+		if next >= len(ids) {
+			panic(fmt.Sprintf("fixed id exhausted: need more than %d ids", len(ids)))
+		}
+		id := ids[next]
+		next++
+		return id
 	}
 }
 
