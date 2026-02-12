@@ -3,6 +3,7 @@
 ## 目的
 - テスト分類・観測項目・完了判定を固定し、実装時の判断ぶれを防ぐ
 - `docs/plan.md` の Phase 4 / Phase 5 を実装可能な基準に落とし込む
+- Phase 5 は代表ケース1本では完了にせず、網羅マトリクス完了で判定する
 
 ## 用語定義
 - 不変条件テスト:
@@ -35,7 +36,7 @@
 - `GET /orders/{id}`: `id`, `customerId`, `status`, `items`
 - `POST /payments/confirm`: `orderId`, `paymentStatus`
 
-## Phase 5 最小DoD
+## Phase 5 着手DoD
 - `backend/tests/boundary/*_integration_test.go` が1本以上存在する
 - `TestIntegration_` 命名の統合テストが存在する
 - 1つ以上の統合テストで次を検証する
@@ -48,6 +49,19 @@
 - CIで統合テストを必須実行する
   - `go test ./tests/boundary -run Integration`
   - Integrationテスト0件は失敗扱いにする
+
+## Phase 5 網羅DoD（完了判定）
+- エンドポイント単位の網羅が完了していること
+  - `POST /orders`: `200/400`
+  - `GET /orders/{id}`: `200/404`
+  - `POST /payments/confirm`: `200/400/404/冪等`
+- `400` は各エンドポイントで入力検証項目の無効組み合わせを全列挙していること
+  - n項目なら `2^n - 1`（空集合除く）ケース以上
+  - 3項目なら 7 ケース（1項目無効/2項目無効/3項目無効）
+- 各ケースで4観測（HTTPステータス/主要レスポンス項目/後続API状態/副作用DB）を検証していること
+- `docs/testing-roles.md` の網羅マトリクス行と `backend/tests/boundary/*_integration_test.go` のテスト関数が1対1で対応していること
+- `404` 分類は「未存在」の意味固定として代表ケース1本を最低ラインとする
+- 未対応ケースが1件でも残っている場合、Phase 5 を完了扱いにしないこと
 
 ## Phase 5 統合境界テスト前提テンプレ
 - 対象API:
@@ -67,6 +81,54 @@
   - 時刻:
     - 現在の注文APIレスポンスに時刻項目はないため、当面は対象外
     - 時刻項目を追加した場合は「完全一致」は行わず、形式（RFC3339）と因果順（作成 <= 更新）のみ検証する
+
+## Phase 5 網羅マトリクステンプレ
+- 記載先:
+  - `docs/testing-roles.md` 内の本セクションを単一参照点として運用する
+- 記載列:
+  - ケースID
+  - 対象API
+  - 入力分類
+  - 期待HTTP
+  - 4観測の確認内容（主要項目/後続API状態/副作用DB）
+  - 対応テスト関数
+  - 状態（未着手/実装中/完了）
+- 必須ケース基底（完了判定で必須）:
+  - `P5-ORD-200-01 | POST /orders | 正常入力 | 200 | orderId/status, GET状態, orders/inventory | TestIntegration_... | 未着手`
+  - `P5-ORD-400-01 | POST /orders | customerId空 | 400 | message, 後続状態なし, DB副作用なし | TestIntegration_... | 未着手`
+  - `P5-GET-200-01 | GET /orders/{id} | 既存ID | 200 | id/customerId/status/items, 整合確認, DB読取 | TestIntegration_... | 未着手`
+  - `P5-GET-404-01 | GET /orders/{id} | 未存在ID | 404 | message, 後続状態なし, DB副作用なし | TestIntegration_... | 未着手`
+  - `P5-PAY-200-01 | POST /payments/confirm | 正常入力 | 200 | paymentStatus, GET状態confirmed, payments更新 | TestIntegration_... | 未着手`
+  - `P5-PAY-400-01 | POST /payments/confirm | 不正入力 | 400 | message, 後続状態なし, DB副作用なし | TestIntegration_... | 未着手`
+  - `P5-PAY-404-01 | POST /payments/confirm | 未存在orderId | 404 | message, 注文状態不変, payments件数不変 | TestIntegration_... | 未着手`
+  - `P5-PAY-IDEMP-01 | POST /payments/confirm | 同一キー再送 | 200 | 応答同値, 状態不変, payments二重計上なし | TestIntegration_... | 未着手`
+- 完了判定ルール:
+  - 上記の「必須ケース基底」を満たした上で、対象エンドポイントの入力仕様に応じてケースを追加する
+  - 状態が `未着手` または `実装中` の行が1つでもある間は Phase 5 を完了扱いにしない
+
+## 400入力組み合わせ網羅ルール
+- 対象:
+  - `POST /orders`
+  - `POST /payments/confirm`
+- 方針:
+  - 入力検証対象の各項目をビットとして扱い、無効化ビット集合を全列挙する
+  - 1項目無効 / 2項目無効 / ... / 全項目無効 まで欠落なく作る
+- `POST /orders`（3項目）の最小全列挙:
+  - `customerId` 無効
+  - `items[*].sku` 無効
+  - `items[*].quantity` 無効
+  - `customerId + items[*].sku` 無効
+  - `customerId + items[*].quantity` 無効
+  - `items[*].sku + items[*].quantity` 無効
+  - `customerId + items[*].sku + items[*].quantity` 無効
+- `POST /payments/confirm`（3項目）の最小全列挙:
+  - `orderId` 無効
+  - `amount` 無効
+  - `idempotencyKey` 無効
+  - `orderId + amount` 無効
+  - `orderId + idempotencyKey` 無効
+  - `amount + idempotencyKey` 無効
+  - `orderId + amount + idempotencyKey` 無効
 
 ## 運用ルール
 - テスト追加時は、冒頭コメントに「固定対象・対象範囲・根拠」を記載する
