@@ -301,19 +301,65 @@ func TestIntegration_OrderBoundary_POST_payments_confirm_400_全項目無効(t *
 	assertConfirmPayment400Case(t, "P5-PAY-400-07", true, true, true)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /payments/confirm の 404（未存在orderId）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_404_未存在orderId(t *testing.T) {
-	未実装境界統合ケース(t, "P5-PAY-404-01")
+	kit := new境界統合Testkit(t)
+
+	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	before := snapshot境界統合副作用(t, kit)
+
+	payload, _ := json.Marshal(map[string]any{
+		"orderId":        "missing-order",
+		"amount":         100,
+		"idempotencyKey": "k-404",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/payments/confirm", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("[P5-PAY-404-01] expected 404, got %d body=%s", w.Code, strings.TrimSpace(w.Body.String()))
+	}
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("[P5-PAY-404-01] failed to decode response: %v", err)
+	}
+	if body.Message != "not found" {
+		t.Fatalf("[P5-PAY-404-01] expected message=not found, got %s", body.Message)
+	}
+
+	after := snapshot境界統合副作用(t, kit)
+	if before != after {
+		t.Fatalf("[P5-PAY-404-01] expected no db side effects, before=%+v after=%+v", before, after)
+	}
+	order := getOrderIntegration(t, kit, createRes.OrderID)
+	if order.Status != "accepted" {
+		t.Fatalf("[P5-PAY-404-01] order status must remain accepted, got %s", order.Status)
+	}
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /payments/confirm の冪等性（同一キー再送）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_冪等_同一キー再送(t *testing.T) {
-	未実装境界統合ケース(t, "P5-PAY-IDEMP-01")
-}
+	kit := new境界統合Testkit(t)
+	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
 
-func 未実装境界統合ケース(t *testing.T, caseID string) {
-	t.Helper()
-	t.Skipf("TODO: implement integration case %s", caseID)
+	first := confirmPaymentIntegration(t, kit, createRes.OrderID, 100, "k-1")
+	afterFirst := snapshot境界統合副作用(t, kit)
+	second := confirmPaymentIntegration(t, kit, createRes.OrderID, 100, "k-1")
+	afterSecond := snapshot境界統合副作用(t, kit)
+
+	if first != second {
+		t.Fatalf("[P5-PAY-IDEMP-01] expected same response, first=%+v second=%+v", first, second)
+	}
+	if afterFirst != afterSecond {
+		t.Fatalf("[P5-PAY-IDEMP-01] expected no additional side effects, first=%+v second=%+v", afterFirst, afterSecond)
+	}
+	order := getOrderIntegration(t, kit, createRes.OrderID)
+	if order.Status != "confirmed" {
+		t.Fatalf("[P5-PAY-IDEMP-01] expected confirmed, got %s", order.Status)
+	}
 }
 
 type 境界統合DB副作用スナップショット struct {
