@@ -67,6 +67,29 @@ func TestIntegration_OrderBoundary_POST_orders_200_quantity境界値1は受理�
 	}
 }
 
+// このテストは GET /orders/{id} の 200 を統合境界で固定する。
+// 仕様対象: 既存ID参照時に主要項目（id/customerId/status/items）を返す。
+// 根拠: GET境界の主要観測が他操作のテストに埋もれないよう独立固定するため。
+func TestIntegration_OrderBoundary_GET_orders_id_200_既存IDは主要項目を返す(t *testing.T) {
+	kit := new境界統合Testkit(t)
+
+	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	getRes := getOrderIntegration(t, kit, createRes.OrderID)
+
+	if getRes.ID != createRes.OrderID {
+		t.Fatalf("expected id=%s, got %s", createRes.OrderID, getRes.ID)
+	}
+	if getRes.CustomerID != "c-1" {
+		t.Fatalf("expected customerId=c-1, got %s", getRes.CustomerID)
+	}
+	if getRes.Status != "accepted" {
+		t.Fatalf("expected status=accepted before confirm, got %s", getRes.Status)
+	}
+	if len(getRes.Items) != 1 || getRes.Items[0].SKU != "sku-1" || getRes.Items[0].Quantity != 1 {
+		t.Fatalf("unexpected items: %+v", getRes.Items)
+	}
+}
+
 // このテストは エラー分類のうち 404（未存在）を統合境界で固定する。
 // 仕様対象: 存在しない注文IDの参照は 404 を返す。
 // 根拠: 未存在の意味を 404 として外部境界に固定するため。

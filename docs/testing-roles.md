@@ -101,7 +101,7 @@
 | P5-ORD-400-07 | POST /orders | customerId+sku+quantity無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_全項目無効` | 完了 |
 | P5-ORD-400-08 | POST /orders | items空 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_items空` | 完了 |
 | P5-ORD-400-09 | POST /orders | 重複SKU | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_重複SKU` | 完了 |
-| P5-GET-200-01 | GET /orders/{id} | 既存ID | 200 | `id/customerId/status/items`、前段POSTとの同値、DB読取整合 | `TestIntegration_OrderBoundary_注文作成から決済確定と注文参照まで通し検証` | 完了 |
+| P5-GET-200-01 | GET /orders/{id} | 既存ID | 200 | `id/customerId/status/items`、前段POSTとの同値、DB読取整合 | `TestIntegration_OrderBoundary_GET_orders_id_200_既存IDは主要項目を返す` | 完了 |
 | P5-GET-404-01 | GET /orders/{id} | 未存在ID | 404 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_404の意味_未存在注文参照は404を返す` | 完了 |
 | P5-PAY-200-01 | POST /payments/confirm | 正常入力 | 200 | `paymentStatus`、後続GETで`confirmed`、payments更新 | `TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷移を固定する` | 完了 |
 | P5-PAY-400-01 | POST /payments/confirm | orderId無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_orderId無効` | 完了 |
