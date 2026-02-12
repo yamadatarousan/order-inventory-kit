@@ -56,6 +56,17 @@ func TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷
 	}
 }
 
+// このテストは POST /orders の数量境界値（1）を統合境界で固定する。
+// 仕様対象: quantity=1 は最小有効値として 200 を返す。
+// 根拠: 境界値の回帰で正当な注文作成が失敗しないことを保証するため。
+func TestIntegration_OrderBoundary_POST_orders_200_quantity境界値1は受理される(t *testing.T) {
+	kit := new境界統合Testkit(t)
+	res := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	if res.Status != "accepted" {
+		t.Fatalf("expected accepted, got %s", res.Status)
+	}
+}
+
 // このテストは エラー分類のうち 404（未存在）を統合境界で固定する。
 // 仕様対象: 存在しない注文IDの参照は 404 を返す。
 // 根拠: 未存在の意味を 404 として外部境界に固定するため。
@@ -193,6 +204,43 @@ func TestIntegration_OrderBoundary_POST_orders_400_skuとquantity無効(t *testi
 // このテストは POST /orders の 400（全項目無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_全項目無効(t *testing.T) {
 	assertCreateOrder400Case(t, "P5-ORD-400-07", true, true, true)
+}
+
+// このテストは POST /orders の 400（items空）を統合境界で固定する。
+func TestIntegration_OrderBoundary_POST_orders_400_items空(t *testing.T) {
+	kit := new境界統合Testkit(t)
+	before := snapshot境界統合副作用(t, kit)
+
+	payload, _ := json.Marshal(map[string]any{
+		"customerId": "c-1",
+		"items":      []map[string]any{},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	assert400NoSideEffect(t, "P5-ORD-400-08", w, before, snapshot境界統合副作用(t, kit))
+}
+
+// このテストは POST /orders の 400（重複SKU）を統合境界で固定する。
+func TestIntegration_OrderBoundary_POST_orders_400_重複SKU(t *testing.T) {
+	kit := new境界統合Testkit(t)
+	before := snapshot境界統合副作用(t, kit)
+
+	payload, _ := json.Marshal(map[string]any{
+		"customerId": "c-1",
+		"items": []map[string]any{
+			{"sku": "sku-1", "quantity": 1},
+			{"sku": "sku-1", "quantity": 2},
+		},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	assert400NoSideEffect(t, "P5-ORD-400-09", w, before, snapshot境界統合副作用(t, kit))
 }
 
 // このテストは POST /payments/confirm の 400（orderId無効）を統合境界で固定する。
