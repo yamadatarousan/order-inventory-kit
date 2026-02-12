@@ -82,28 +82,36 @@
     - 現在の注文APIレスポンスに時刻項目はないため、当面は対象外
     - 時刻項目を追加した場合は「完全一致」は行わず、形式（RFC3339）と因果順（作成 <= 更新）のみ検証する
 
-## Phase 5 網羅マトリクステンプレ
+## Phase 5 網羅マトリクス（初版）
 - 記載先:
   - `docs/testing-roles.md` 内の本セクションを単一参照点として運用する
 - 記載列:
-  - ケースID
-  - 対象API
-  - 入力分類
-  - 期待HTTP
-  - 4観測の確認内容（主要項目/後続API状態/副作用DB）
-  - 対応テスト関数
-  - 状態（未着手/実装中/完了）
-- 必須ケース基底（完了判定で必須）:
-  - `P5-ORD-200-01 | POST /orders | 正常入力 | 200 | orderId/status, GET状態, orders/inventory | TestIntegration_... | 未着手`
-  - `P5-ORD-400-01 | POST /orders | customerId空 | 400 | message, 後続状態なし, DB副作用なし | TestIntegration_... | 未着手`
-  - `P5-GET-200-01 | GET /orders/{id} | 既存ID | 200 | id/customerId/status/items, 整合確認, DB読取 | TestIntegration_... | 未着手`
-  - `P5-GET-404-01 | GET /orders/{id} | 未存在ID | 404 | message, 後続状態なし, DB副作用なし | TestIntegration_... | 未着手`
-  - `P5-PAY-200-01 | POST /payments/confirm | 正常入力 | 200 | paymentStatus, GET状態confirmed, payments更新 | TestIntegration_... | 未着手`
-  - `P5-PAY-400-01 | POST /payments/confirm | 不正入力 | 400 | message, 後続状態なし, DB副作用なし | TestIntegration_... | 未着手`
-  - `P5-PAY-404-01 | POST /payments/confirm | 未存在orderId | 404 | message, 注文状態不変, payments件数不変 | TestIntegration_... | 未着手`
-  - `P5-PAY-IDEMP-01 | POST /payments/confirm | 同一キー再送 | 200 | 応答同値, 状態不変, payments二重計上なし | TestIntegration_... | 未着手`
+  - ケースID / 対象API / 入力分類 / 期待HTTP / 4観測（主要項目・後続API状態・副作用DB） / 対応テスト関数 / 状態
+
+| ケースID | 対象API | 入力分類 | 期待HTTP | 4観測（主要項目・後続API状態・副作用DB） | 対応テスト関数 | 状態 |
+|---|---|---|---|---|---|---|
+| P5-ORD-200-01 | POST /orders | 正常入力 | 200 | `orderId/status`、後続GETで同一ID観測、orders作成/inventory反映 | `TestIntegration_OrderBoundary_注文作成から決済確定と注文参照まで通し検証` | 完了 |
+| P5-ORD-400-01 | POST /orders | customerId無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_customerId無効` | 未着手 |
+| P5-ORD-400-02 | POST /orders | items[*].sku無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_sku無効` | 未着手 |
+| P5-ORD-400-03 | POST /orders | items[*].quantity無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_quantity無効` | 未着手 |
+| P5-ORD-400-04 | POST /orders | customerId+sku無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_customerIdとsku無効` | 未着手 |
+| P5-ORD-400-05 | POST /orders | customerId+quantity無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_customerIdとquantity無効` | 未着手 |
+| P5-ORD-400-06 | POST /orders | sku+quantity無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_skuとquantity無効` | 未着手 |
+| P5-ORD-400-07 | POST /orders | customerId+sku+quantity無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_全項目無効` | 未着手 |
+| P5-GET-200-01 | GET /orders/{id} | 既存ID | 200 | `id/customerId/status/items`、前段POSTとの同値、DB読取整合 | `TestIntegration_OrderBoundary_注文作成から決済確定と注文参照まで通し検証` | 完了 |
+| P5-GET-404-01 | GET /orders/{id} | 未存在ID | 404 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_404の意味_未存在注文参照は404を返す` | 完了 |
+| P5-PAY-200-01 | POST /payments/confirm | 正常入力 | 200 | `paymentStatus`、後続GETで`confirmed`、payments更新 | `TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷移を固定する` | 完了 |
+| P5-PAY-400-01 | POST /payments/confirm | orderId無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_orderId無効` | 未着手 |
+| P5-PAY-400-02 | POST /payments/confirm | amount無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_amount無効` | 未着手 |
+| P5-PAY-400-03 | POST /payments/confirm | idempotencyKey無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_key無効` | 未着手 |
+| P5-PAY-400-04 | POST /payments/confirm | orderId+amount無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_orderIdとamount無効` | 未着手 |
+| P5-PAY-400-05 | POST /payments/confirm | orderId+idempotencyKey無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_orderIdとkey無効` | 未着手 |
+| P5-PAY-400-06 | POST /payments/confirm | amount+idempotencyKey無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_amountとkey無効` | 未着手 |
+| P5-PAY-400-07 | POST /payments/confirm | orderId+amount+idempotencyKey無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_全項目無効` | 未着手 |
+| P5-PAY-404-01 | POST /payments/confirm | 未存在orderId | 404 | エラー応答、注文状態不変、payments件数不変 | `TestIntegration_OrderBoundary_POST_payments_confirm_404_未存在orderId` | 未着手 |
+| P5-PAY-IDEMP-01 | POST /payments/confirm | 同一キー再送 | 200 | 応答同値、後続状態不変、payments二重計上なし | `TestIntegration_OrderBoundary_POST_payments_confirm_冪等_同一キー再送` | 未着手 |
+
 - 完了判定ルール:
-  - 上記の「必須ケース基底」を満たした上で、対象エンドポイントの入力仕様に応じてケースを追加する
   - 状態が `未着手` または `実装中` の行が1つでもある間は Phase 5 を完了扱いにしない
 
 ## 400入力組み合わせ網羅ルール
