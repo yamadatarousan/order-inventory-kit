@@ -278,12 +278,12 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] 境界一貫性統合テストを1本先行追加し、実Router+実UseCase+実DBで通し検証できることを固定する（`backend/tests/boundary/*_integration_test.go`）
 - [x] 200の意味（accepted → confirmed）を統合境界テストで固定
 - [x] エラー分類のうち 404（未存在）を統合境界テストで固定
-- [ ] エラー分類のうち 400（不正入力）はエンドポイントごとに網羅固定する
+- [x] エラー分類のうち 400（不正入力）はエンドポイントごとに網羅固定する
 - [ ] `POST /orders` の統合境界テストを網羅する（200/400、入力組み合わせの境界値を含む）
-- [ ] `POST /orders` の 400 は入力3項目（`customerId` / `items[*].sku` / `items[*].quantity`）の無効組み合わせを全列挙で固定する（1項目無効/2項目無効/3項目無効）
+- [x] `POST /orders` の 400 は入力3項目（`customerId` / `items[*].sku` / `items[*].quantity`）の無効組み合わせを全列挙で固定する（1項目無効/2項目無効/3項目無効）
 - [ ] `GET /orders/{id}` の統合境界テストを網羅する（200/404）
 - [ ] `POST /payments/confirm` の統合境界テストを網羅する（200/400/404/冪等）
-- [ ] `POST /payments/confirm` の 400 は入力3項目（`orderId` / `amount` / `idempotencyKey`）の無効組み合わせを全列挙で固定する（1項目無効/2項目無効/3項目無効）
+- [x] `POST /payments/confirm` の 400 は入力3項目（`orderId` / `amount` / `idempotencyKey`）の無効組み合わせを全列挙で固定する（1項目無効/2項目無効/3項目無効）
 - [ ] 冪等性（同一操作を2回）を統合境界テストで固定
 - [ ] `customerId` を主要フィールド観測として固定する（POST /orders 入力値と GET /orders/{id} 応答値の同値を検証する）
 - [ ] 観測対象の副作用（orders/payments/inventory）を統合境界テストで固定する（orders状態・payments件数・inventory数量をDBで検証する）

@@ -160,74 +160,74 @@ func getOrderIntegration(t *testing.T, kit *境界統合Testkit, orderID string)
 	return res
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /orders の 400（customerId無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_customerId無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-ORD-400-01")
+	assertCreateOrder400Case(t, "P5-ORD-400-01", true, false, false)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /orders の 400（sku無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_sku無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-ORD-400-02")
+	assertCreateOrder400Case(t, "P5-ORD-400-02", false, true, false)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /orders の 400（quantity無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_quantity無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-ORD-400-03")
+	assertCreateOrder400Case(t, "P5-ORD-400-03", false, false, true)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /orders の 400（customerId+sku無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_customerIdとsku無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-ORD-400-04")
+	assertCreateOrder400Case(t, "P5-ORD-400-04", true, true, false)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /orders の 400（customerId+quantity無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_customerIdとquantity無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-ORD-400-05")
+	assertCreateOrder400Case(t, "P5-ORD-400-05", true, false, true)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /orders の 400（sku+quantity無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_skuとquantity無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-ORD-400-06")
+	assertCreateOrder400Case(t, "P5-ORD-400-06", false, true, true)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /orders の 400（全項目無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_全項目無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-ORD-400-07")
+	assertCreateOrder400Case(t, "P5-ORD-400-07", true, true, true)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /payments/confirm の 400（orderId無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_400_orderId無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-PAY-400-01")
+	assertConfirmPayment400Case(t, "P5-PAY-400-01", true, false, false)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /payments/confirm の 400（amount無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_400_amount無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-PAY-400-02")
+	assertConfirmPayment400Case(t, "P5-PAY-400-02", false, true, false)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /payments/confirm の 400（idempotencyKey無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_400_key無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-PAY-400-03")
+	assertConfirmPayment400Case(t, "P5-PAY-400-03", false, false, true)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /payments/confirm の 400（orderId+amount無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_400_orderIdとamount無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-PAY-400-04")
+	assertConfirmPayment400Case(t, "P5-PAY-400-04", true, true, false)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /payments/confirm の 400（orderId+idempotencyKey無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_400_orderIdとkey無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-PAY-400-05")
+	assertConfirmPayment400Case(t, "P5-PAY-400-05", true, false, true)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /payments/confirm の 400（amount+idempotencyKey無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_400_amountとkey無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-PAY-400-06")
+	assertConfirmPayment400Case(t, "P5-PAY-400-06", false, true, true)
 }
 
-// このテストはケース一覧を固定するためのスケルトン。
+// このテストは POST /payments/confirm の 400（全項目無効）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_400_全項目無効(t *testing.T) {
-	未実装境界統合ケース(t, "P5-PAY-400-07")
+	assertConfirmPayment400Case(t, "P5-PAY-400-07", true, true, true)
 }
 
 // このテストはケース一覧を固定するためのスケルトン。
@@ -243,4 +243,109 @@ func TestIntegration_OrderBoundary_POST_payments_confirm_冪等_同一キー再�
 func 未実装境界統合ケース(t *testing.T, caseID string) {
 	t.Helper()
 	t.Skipf("TODO: implement integration case %s", caseID)
+}
+
+type 境界統合DB副作用スナップショット struct {
+	orders     int
+	orderItems int
+	payments   int
+}
+
+func assertCreateOrder400Case(t *testing.T, caseID string, invalidCustomerID, invalidSKU, invalidQuantity bool) {
+	t.Helper()
+
+	kit := new境界統合Testkit(t)
+	before := snapshot境界統合副作用(t, kit)
+
+	customerID := "c-1"
+	if invalidCustomerID {
+		customerID = ""
+	}
+	sku := "sku-1"
+	if invalidSKU {
+		sku = ""
+	}
+	quantity := 1
+	if invalidQuantity {
+		quantity = 0
+	}
+
+	payload, _ := json.Marshal(map[string]any{
+		"customerId": customerID,
+		"items":      []map[string]any{{"sku": sku, "quantity": quantity}},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	assert400NoSideEffect(t, caseID, w, before, snapshot境界統合副作用(t, kit))
+}
+
+func assertConfirmPayment400Case(t *testing.T, caseID string, invalidOrderID, invalidAmount, invalidKey bool) {
+	t.Helper()
+
+	kit := new境界統合Testkit(t)
+	before := snapshot境界統合副作用(t, kit)
+
+	orderID := "integration-order-1"
+	if invalidOrderID {
+		orderID = ""
+	}
+	amount := 100
+	if invalidAmount {
+		amount = 0
+	}
+	key := "k-1"
+	if invalidKey {
+		key = ""
+	}
+
+	payload, _ := json.Marshal(map[string]any{
+		"orderId":        orderID,
+		"amount":         amount,
+		"idempotencyKey": key,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/payments/confirm", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	assert400NoSideEffect(t, caseID, w, before, snapshot境界統合副作用(t, kit))
+}
+
+func assert400NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseRecorder, before, after 境界統合DB副作用スナップショット) {
+	t.Helper()
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("[%s] expected 400, got %d body=%s", caseID, w.Code, strings.TrimSpace(w.Body.String()))
+	}
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("[%s] failed to decode error response: %v", caseID, err)
+	}
+	if body.Message != "invalid request" {
+		t.Fatalf("[%s] expected message=invalid request, got %s", caseID, body.Message)
+	}
+	if before != after {
+		t.Fatalf("[%s] expected no db side effects, before=%+v after=%+v", caseID, before, after)
+	}
+}
+
+func snapshot境界統合副作用(t *testing.T, kit *境界統合Testkit) 境界統合DB副作用スナップショット {
+	t.Helper()
+
+	var s 境界統合DB副作用スナップショット
+	if err := kit.DB.QueryRow(`SELECT COUNT(*) FROM orders`).Scan(&s.orders); err != nil {
+		t.Fatalf("failed to count orders: %v", err)
+	}
+	if err := kit.DB.QueryRow(`SELECT COUNT(*) FROM order_items`).Scan(&s.orderItems); err != nil {
+		t.Fatalf("failed to count order_items: %v", err)
+	}
+	if err := kit.DB.QueryRow(`SELECT COUNT(*) FROM payments`).Scan(&s.payments); err != nil {
+		t.Fatalf("failed to count payments: %v", err)
+	}
+	return s
 }
