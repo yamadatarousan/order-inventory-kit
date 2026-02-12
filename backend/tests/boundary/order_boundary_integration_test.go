@@ -56,6 +56,20 @@ func TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷
 	}
 }
 
+// このテストは エラー分類のうち 404（未存在）を統合境界で固定する。
+// 仕様対象: 存在しない注文IDの参照は 404 を返す。
+// 根拠: 未存在の意味を 404 として外部境界に固定するため。
+func TestIntegration_OrderBoundary_404の意味_未存在注文参照は404を返す(t *testing.T) {
+	kit := new境界統合Testkit(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/orders/missing-order", nil)
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 on missing order get, got %d body=%s", w.Code, strings.TrimSpace(w.Body.String()))
+	}
+}
+
 func createOrderIntegration(t *testing.T, kit *境界統合Testkit, customerID, sku string, quantity int) struct {
 	OrderID string `json:"orderId"`
 	Status  string `json:"status"`
