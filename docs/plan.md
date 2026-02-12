@@ -274,7 +274,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] 統合境界テスト用の DB 初期化/後片付け手順を固定する（migrate適用、seed投入、テーブルリセット）
 - [x] 非決定要素の扱いを固定する（ID/時刻などの注入または検証方法）
 - [x] 境界一貫性統合テストを1本先行追加し、実Router+実UseCase+実DBで通し検証できることを固定する（`backend/tests/boundary/*_integration_test.go`）
-- [ ] 200の意味（accepted → confirmed）を統合境界テストで固定
+- [x] 200の意味（accepted → confirmed）を統合境界テストで固定
 - [ ] エラー分類（404/400）を統合境界テストで固定
 - [ ] 冪等性（同一操作を2回）を統合境界テストで固定
 - [ ] `customerId` を主要フィールド観測として固定する（POST /orders 入力値と GET /orders/{id} 応答値の同値を検証する）
