@@ -159,3 +159,88 @@ func getOrderIntegration(t *testing.T, kit *境界統合Testkit, orderID string)
 	}
 	return res
 }
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_orders_400_customerId無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-ORD-400-01")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_orders_400_sku無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-ORD-400-02")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_orders_400_quantity無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-ORD-400-03")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_orders_400_customerIdとsku無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-ORD-400-04")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_orders_400_customerIdとquantity無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-ORD-400-05")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_orders_400_skuとquantity無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-ORD-400-06")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_orders_400_全項目無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-ORD-400-07")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_payments_confirm_400_orderId無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-PAY-400-01")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_payments_confirm_400_amount無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-PAY-400-02")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_payments_confirm_400_key無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-PAY-400-03")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_payments_confirm_400_orderIdとamount無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-PAY-400-04")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_payments_confirm_400_orderIdとkey無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-PAY-400-05")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_payments_confirm_400_amountとkey無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-PAY-400-06")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_payments_confirm_400_全項目無効(t *testing.T) {
+	未実装境界統合ケース(t, "P5-PAY-400-07")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_payments_confirm_404_未存在orderId(t *testing.T) {
+	未実装境界統合ケース(t, "P5-PAY-404-01")
+}
+
+// このテストはケース一覧を固定するためのスケルトン。
+func TestIntegration_OrderBoundary_POST_payments_confirm_冪等_同一キー再送(t *testing.T) {
+	未実装境界統合ケース(t, "P5-PAY-IDEMP-01")
+}
+
+func 未実装境界統合ケース(t *testing.T, caseID string) {
+	t.Helper()
+	t.Skipf("TODO: implement integration case %s", caseID)
+}
