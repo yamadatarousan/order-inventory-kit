@@ -104,6 +104,61 @@ func TestIntegration_OrderBoundary_customerId同値観測_POSTとGETで一致す
 	}
 }
 
+// このテストは副作用DB観測（orders/payments/inventory）を統合境界で固定する。
+// 仕様対象: 注文作成/決済確定時の orders状態・payments件数・inventory数量 の変化。
+// 根拠: API応答だけでは検出できない永続状態の回帰を検出するため。
+func TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventoryを固定する(t *testing.T) {
+	kit := new境界統合Testkit(t)
+	// amount は現状、1以上かどうかの入力検証にのみ使われるため、
+	// 本テストでは有効値として固定値を使う。
+	validAmount := 100
+
+	// 以降の在庫不変確認で比較するため、操作前の在庫数量を取得する。
+	beforeInventory := inventoryQuantityBySKU(t, kit, "sku-1")
+	// 操作前に対象注文IDの決済記録が存在しないことを確認する。
+	if paymentsCountByOrder(t, kit, "integration-order-1") != 0 {
+		t.Fatalf("expected no payments before create")
+	}
+
+	// 1. 注文作成を実行し、作成直後のDB副作用を確認する。
+	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+
+	// 注文作成直後は orders.status が accepted で保存されること。
+	if status := orderStatusByID(t, kit, createRes.OrderID); status != "accepted" {
+		t.Fatalf("expected order status=accepted after create, got %s", status)
+	}
+	// 注文作成だけでは決済記録は増えないこと。
+	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 0 {
+		t.Fatalf("expected payments=0 after create, got %d", payments)
+	}
+	// 現行仕様では注文作成時に在庫数量は変化しないこと。
+	if afterCreateInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterCreateInventory != beforeInventory {
+		t.Fatalf("inventory must remain unchanged after create, before=%d after=%d", beforeInventory, afterCreateInventory)
+	}
+
+	// 2. 決済確定を実行し、確定後のDB副作用を確認する。
+	_ = confirmPaymentIntegration(t, kit, createRes.OrderID, validAmount, "k-1")
+
+	// 決済確定後は orders.status が confirmed に遷移すること。
+	if status := orderStatusByID(t, kit, createRes.OrderID); status != "confirmed" {
+		t.Fatalf("expected order status=confirmed after payment confirm, got %s", status)
+	}
+	// 初回確定で決済記録が1件作成されること。
+	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 1 {
+		t.Fatalf("expected payments=1 after first confirm, got %d", payments)
+	}
+	// 現行仕様では決済確定時も在庫数量は変化しないこと。
+	if afterConfirmInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterConfirmInventory != beforeInventory {
+		t.Fatalf("inventory must remain unchanged after confirm, before=%d after=%d", beforeInventory, afterConfirmInventory)
+	}
+
+	// 3. 同一キー再送時の冪等性として、決済記録が増えないことを確認する。
+	_ = confirmPaymentIntegration(t, kit, createRes.OrderID, validAmount, "k-1")
+	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 1 {
+		t.Fatalf("expected payments to remain 1 on idempotent replay, got %d", payments)
+	}
+}
+
 // このテストは エラー分類のうち 404（未存在）を統合境界で固定する。
 // 仕様対象: 存在しない注文IDの参照は 404 を返す。
 // 根拠: 未存在の意味を 404 として外部境界に固定するため。
@@ -152,6 +207,7 @@ func confirmPaymentIntegration(t *testing.T, kit *境界統合Testkit, orderID s
 } {
 	t.Helper()
 
+	// amount は現状、1以上かどうかの入力検証にのみ使われる。
 	payload, _ := json.Marshal(map[string]any{
 		"orderId":        orderID,
 		"amount":         amount,
@@ -479,4 +535,34 @@ func snapshot境界統合副作用(t *testing.T, kit *境界統合Testkit) 境�
 		t.Fatalf("failed to count payments: %v", err)
 	}
 	return s
+}
+
+func orderStatusByID(t *testing.T, kit *境界統合Testkit, orderID string) string {
+	t.Helper()
+
+	var status string
+	if err := kit.DB.QueryRow(`SELECT status FROM orders WHERE id = $1`, orderID).Scan(&status); err != nil {
+		t.Fatalf("failed to fetch order status: %v", err)
+	}
+	return status
+}
+
+func paymentsCountByOrder(t *testing.T, kit *境界統合Testkit, orderID string) int {
+	t.Helper()
+
+	var count int
+	if err := kit.DB.QueryRow(`SELECT COUNT(*) FROM payments WHERE order_id = $1`, orderID).Scan(&count); err != nil {
+		t.Fatalf("failed to count payments by order: %v", err)
+	}
+	return count
+}
+
+func inventoryQuantityBySKU(t *testing.T, kit *境界統合Testkit, sku string) int {
+	t.Helper()
+
+	var qty int
+	if err := kit.DB.QueryRow(`SELECT quantity FROM inventory WHERE sku = $1`, sku).Scan(&qty); err != nil {
+		t.Fatalf("failed to fetch inventory quantity: %v", err)
+	}
+	return qty
 }

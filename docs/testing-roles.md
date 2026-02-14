@@ -104,6 +104,7 @@
 | P5-GET-200-01 | GET /orders/{id} | 既存ID | 200 | `id/customerId/status/items`、前段POSTとの同値、DB読取整合 | `TestIntegration_OrderBoundary_GET_orders_id_200_既存IDは主要項目を返す` | 完了 |
 | P5-GET-404-01 | GET /orders/{id} | 未存在ID | 404 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_404の意味_未存在注文参照は404を返す` | 完了 |
 | P5-GET-CID-01 | GET /orders/{id} | customerId同値観測 | 200 | POST入力の`customerId`とGET応答の`customerId`同値、後続状態整合、DB読取整合 | `TestIntegration_OrderBoundary_customerId同値観測_POSTとGETで一致する` | 完了 |
+| P5-SFX-01 | POST /orders + POST /payments/confirm | 副作用DB観測（orders/payments/inventory） | 200 | orders状態（accepted→confirmed）、payments件数（0→1）、inventory数量（不変）をDBで検証 | `TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventoryを固定する` | 完了 |
 | P5-PAY-200-01 | POST /payments/confirm | 正常入力 | 200 | `paymentStatus`、後続GETで`confirmed`、payments更新 | `TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷移を固定する` | 完了 |
 | P5-PAY-400-01 | POST /payments/confirm | orderId無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_orderId無効` | 完了 |
 | P5-PAY-400-02 | POST /payments/confirm | amount無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_amount無効` | 完了 |

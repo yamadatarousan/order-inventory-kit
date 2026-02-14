@@ -286,7 +286,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] `POST /payments/confirm` の 400 は入力3項目（`orderId` / `amount` / `idempotencyKey`）の無効組み合わせを全列挙で固定する（1項目無効/2項目無効/3項目無効）
 - [x] 冪等性（同一操作を2回）を統合境界テストで固定
 - [x] `customerId` を主要フィールド観測として固定する（POST /orders 入力値と GET /orders/{id} 応答値の同値を検証する）
-- [ ] 観測対象の副作用（orders/payments/inventory）を統合境界テストで固定する（orders状態・payments件数・inventory数量をDBで検証する）
+- [x] 観測対象の副作用（orders/payments/inventory）を統合境界テストで固定する（orders状態・payments件数・inventory数量をDBで検証する）
 - [ ] 各ケースで4観測を必須化する（HTTPステータス/主要レスポンス項目/後続API状態/副作用DB）
 - [ ] テスト関数と網羅マトリクスの対応表を `docs/testing-roles.md` に維持する（欠落ケースを可視化する）
 - [x] 境界観測一貫性テストは `backend/tests/boundary/` に集約する方針で固定

@@ -76,7 +76,8 @@ func (u *OrderUsecase) CancelOrder(id string) (domain.Order, error) {
 
 // ConfirmPaymentInput は決済確定の入力。
 type ConfirmPaymentInput struct {
-	OrderID        string
+	OrderID string
+	// Amount は現状、入力妥当性（1以上）の検証用途のみ。金額計算や永続化には未接続。
 	Amount         int
 	IdempotencyKey string
 }
