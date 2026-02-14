@@ -306,10 +306,10 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - 運用ルール: 局所固定タスク（例: 代表ケース1本、単一分類固定）は、対象APIの網羅後続タスク（入力分類・完了条件付き）が `docs/plan.md` に未完了タスクとして明示されている場合にのみ着手可。未明示なら着手禁止
 
 #### Phase 5 完了後に着手する拡張タスク（EC在庫・決済金額整合）
-- 説明: ここでいう「標準モデル」は、在庫を `OnHand(実在庫)` と `Reserved(引当済み)` に分けて管理し、販売可能数を `Available=OnHand-Reserved` で扱う方式を指す。
-- 説明: 状態遷移は「注文作成で引当（Reserve）」「キャンセル/期限切れで引当戻し（Release）」「出荷確定で実在庫減算（OnHand減少）」を基本とする。
+- 決定参照: `ADR-0001` `docs/adr/0001-inventory-stock-model.md`（在庫モデル/状態遷移）
+- 決定参照: `ADR-0002` `docs/adr/0002-payment-amount-consistency.md`（`amount` 整合/`409` 分類）
 - [ ] 目的1: 仕様を確定する（契約定義を含む）
-  - [ ] 在庫モデル方針を標準モデルで固定する（`OnHand` / `Reserved` / `Available=OnHand-Reserved`）
+  - [x] 在庫モデル方針を標準モデルで固定する（`OnHand` / `Reserved` / `Available=OnHand-Reserved`）
   - [ ] 標準モデルの用語定義を明記する（`OnHand=実在庫`、`Reserved=引当済み在庫`、`Available=販売可能在庫`）
   - [ ] 在庫状態遷移を固定する（注文作成で `Reserve`、キャンセル/期限切れで `Release`、決済確定では在庫を減算しない）
   - [ ] 出荷未実装期間の運用前提を明記する（今回の対象外は「出荷確定でOnHand減算」。未実装期間は `OnHand` を変更しない）

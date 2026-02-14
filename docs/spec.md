@@ -70,6 +70,16 @@
 - `handler -> usecase -> domain`
 - `infra/db` は `domain` に依存してよい
 
+## 在庫モデル方針（標準モデル）
+- 決定記録: `docs/adr/0001-inventory-stock-model.md`（ADR-0001）
+- 在庫は次の3値で定義する
+  - `OnHand`: 実在庫
+  - `Reserved`: 引当済み在庫
+  - `Available`: 販売可能在庫（`OnHand - Reserved`）
+- 売り越し防止の判定は `Available` を基準に行う
+- `Reserved` は注文起点の引当管理に使い、`OnHand` は実在庫管理に使う
+- 在庫数量に関する仕様判断・テスト観測・永続化設計は、この3値定義を単一の基準とする
+
 ## テスト分類（固定）
 - 不変条件テスト: `backend/tests/domain/`
 - 境界一貫性統合テスト/境界単体テスト: `backend/tests/boundary/`
