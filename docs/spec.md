@@ -103,6 +103,11 @@
 - 丸め規則は「端数処理なし」を採用する
   - `amount` は整数（円）で扱い、四捨五入/切り上げ/切り捨ては行わない
 
+## 価格の決定元
+- 決定記録: `docs/adr/0002-payment-amount-consistency.md`（ADR-0002）
+- `unit_price` はサーバ側価格情報を決定元として設定する
+- クライアント入力の価格は決定元として採用しない
+
 ## テスト分類（固定）
 - 不変条件テスト: `backend/tests/domain/`
 - 境界一貫性統合テスト/境界単体テスト: `backend/tests/boundary/`
