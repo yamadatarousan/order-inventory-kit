@@ -295,10 +295,10 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] 各ケースで4観測をテストコード上で必須化する（1ケースにつき HTTPステータス/主要レスポンス項目/後続API状態/副作用DB のアサーションを最低1つずつ実装し、欠けるケースを未完了として残さない）
 - [x] テスト関数と網羅マトリクスの対応表を `docs/testing-roles.md` に維持する（欠落ケースを可視化する）
 - [x] 境界観測一貫性テストは `backend/tests/boundary/` に集約する方針で固定
-- [ ] 既存の境界テストを役割別に整理する（単体境界は `*_unit_test.go`、統合境界は `*_integration_test.go`）
-- [ ] `backend/internal/adapter/handler/order_handler_test.go` を「Handler単体の責務（HTTP変換/分類）」に限定し、通しシナリオを残さない
-- [ ] `backend/internal/adapter/handler/order_handler_test.go` から移した通しシナリオを `backend/tests/boundary/*_integration_test.go` で固定する
-- [ ] 境界一貫性統合テストに観測結果を明記する（HTTPステータス/主要レスポンス項目/後続API状態/副作用DB）
+- [x] 既存の境界テストを役割別に整理する（単体境界は `*_unit_test.go`、統合境界は `*_integration_test.go`）
+- [x] `backend/internal/adapter/handler/order_handler_test.go` を「Handler単体の責務（HTTP変換/分類）」に限定し、通しシナリオを残さない
+- [x] `backend/internal/adapter/handler/order_handler_test.go` から移した通しシナリオを `backend/tests/boundary/*_integration_test.go` で固定する
+- [x] 境界一貫性統合テストに観測結果を明記する（HTTPステータス/主要レスポンス項目/後続API状態/副作用DB）
 - [ ] CIで boundary テスト全体（unit/integration）を実行しつつ、統合境界テスト（`go test ./tests/boundary -run Integration`）を必須化して rails 通過条件に含める（Integrationテスト0件を失敗扱いにする）
 - [ ] `403` 分類は Phase 7（認可導入）で固定する
 - 注記: CI接続は Phase 0 の完了条件に従属（ここでは境界観測一貫性テストの内容拡張に専念する）
