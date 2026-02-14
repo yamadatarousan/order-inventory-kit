@@ -119,6 +119,19 @@
 - 完了判定ルール:
   - 状態が `未着手` または `実装中` の行が1つでもある間は Phase 5 を完了扱いにしない
 
+## 対応表の維持手順（欠落ケース可視化）
+- 目的:
+  - 網羅マトリクスの `対応テスト関数` と実テスト実装の不一致を可視化し、欠落ケースを見逃さない
+- 手順:
+  - マトリクス上の関数名を抽出:
+    - `rg -o 'TestIntegration_[^`]+' docs/testing-roles.md | sort -u`
+  - 実装上の関数名を抽出:
+    - `rg -o '^func (TestIntegration_[^(]+)' backend/tests/boundary/order_boundary_integration_test.go -r '$1' | sort -u`
+  - `comm` で差分を確認し、片側だけに存在する関数を欠落ケースとして扱う
+- 現在の可視化結果（2026-02-14）:
+  - `MISSING_IN_TESTS`: なし
+  - `MISSING_IN_MATRIX`: なし
+
 ## 400入力組み合わせ網羅ルール
 - 対象:
   - `POST /orders`

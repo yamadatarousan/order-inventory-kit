@@ -288,7 +288,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] `customerId` を主要フィールド観測として固定する（POST /orders 入力値と GET /orders/{id} 応答値の同値を検証する）
 - [x] 観測対象の副作用（orders/payments/inventory）を統合境界テストで固定する（orders状態・payments件数・inventory数量をDBで検証する）
 - [x] 各ケースで4観測をテストコード上で必須化する（1ケースにつき HTTPステータス/主要レスポンス項目/後続API状態/副作用DB のアサーションを最低1つずつ実装し、欠けるケースを未完了として残さない）
-- [ ] テスト関数と網羅マトリクスの対応表を `docs/testing-roles.md` に維持する（欠落ケースを可視化する）
+- [x] テスト関数と網羅マトリクスの対応表を `docs/testing-roles.md` に維持する（欠落ケースを可視化する）
 - [x] 境界観測一貫性テストは `backend/tests/boundary/` に集約する方針で固定
 - [ ] 既存の境界テストを役割別に整理する（単体境界は `*_unit_test.go`、統合境界は `*_integration_test.go`）
 - [ ] `backend/internal/adapter/handler/order_handler_test.go` を「Handler単体の責務（HTTP変換/分類）」に限定し、通しシナリオを残さない
