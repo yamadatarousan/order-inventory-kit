@@ -85,9 +85,17 @@ jobs:
         # 副作用（件数・金額・在庫など）
         # この定義に基づき、壊れると困る代表シナリオを `backend/tests/boundary/` で固定する
         run: |
-          if [ -n "$(find backend/tests/boundary -type f -name '*_test.go' -print -quit 2>/dev/null)" ]; then
-            cd backend
-            go test ./tests/boundary/...
-          else
-            echo "[boundary-tests] skip: backend/tests/boundary has no test files yet"
+          cd backend
+
+          # boundary 全体（unit/integration）を実行する。
+          go test ./tests/boundary/...
+
+          # 統合境界テストが 0 件なら rails を失敗させる。
+          integration_count="$(go test ./tests/boundary -list Integration | grep -c '^TestIntegration_')"
+          if [ "$integration_count" -eq 0 ]; then
+            echo "[boundary-tests] fail: no integration tests matched (TestIntegration_)"
+            exit 1
           fi
+
+          # 統合境界テストを必須実行する。
+          go test ./tests/boundary -run Integration -count=1
