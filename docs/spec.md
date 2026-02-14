@@ -92,6 +92,11 @@
 - そのため未実装期間の在庫更新対象は `Reserved` のみとし、`OnHand` は変更しない
 - `OnHand` 減算は、出荷機能を導入するフェーズで `出荷確定` とセットで実装する
 
+## 決済 `amount` の意味と単位
+- 決定記録: `docs/adr/0002-payment-amount-consistency.md`（ADR-0002）
+- `amount` は「決済要求額」を表す
+- 単位は最小通貨単位の整数で扱う（小数は扱わない）
+
 ## テスト分類（固定）
 - 不変条件テスト: `backend/tests/domain/`
 - 境界一貫性統合テスト/境界単体テスト: `backend/tests/boundary/`
