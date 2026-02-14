@@ -90,7 +90,7 @@
 
 | ケースID | 対象API | 入力分類 | 期待HTTP | 4観測（主要項目・後続API状態・副作用DB） | 対応テスト関数 | 状態 |
 |---|---|---|---|---|---|---|
-| P5-ORD-200-01 | POST /orders | 正常入力 | 200 | `orderId/status`、後続GETで同一ID観測、orders作成/inventory反映 | `TestIntegration_OrderBoundary_注文作成から決済確定と注文参照まで通し検証` | 完了 |
+| P5-ORD-200-01 | POST /orders | 正常入力 | 200 | `orderId/status`、後続GETで同一ID観測、orders作成/inventory不変 | `TestIntegration_OrderBoundary_注文作成から決済確定と注文参照まで通し検証` | 完了 |
 | P5-ORD-200-02 | POST /orders | quantity境界値（1） | 200 | `status=accepted`、後続状態作成可、DB副作用あり | `TestIntegration_OrderBoundary_POST_orders_200_quantity境界値1は受理される` | 完了 |
 | P5-ORD-400-01 | POST /orders | customerId無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_customerId無効` | 完了 |
 | P5-ORD-400-02 | POST /orders | items[*].sku無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_sku無効` | 完了 |

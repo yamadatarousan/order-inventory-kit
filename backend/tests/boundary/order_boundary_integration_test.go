@@ -14,15 +14,36 @@ import (
 // 根拠: 実Router+実UseCase+実DB を通した境界振る舞いの回帰を検出するため。
 func TestIntegration_OrderBoundary_注文作成から決済確定と注文参照まで通し検証(t *testing.T) {
 	kit := new境界統合Testkit(t)
+	beforeInventory := inventoryQuantityBySKU(t, kit, "sku-1")
 
 	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
 	if createRes.OrderID != "integration-order-1" {
 		t.Fatalf("order id must be deterministic in integration test, got %s", createRes.OrderID)
 	}
+	if status := orderStatusByID(t, kit, createRes.OrderID); status != "accepted" {
+		t.Fatalf("expected order status=accepted after create, got %s", status)
+	}
+	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 0 {
+		t.Fatalf("expected payments=0 after create, got %d", payments)
+	}
+	if afterCreateInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterCreateInventory != beforeInventory {
+		t.Fatalf("inventory must remain unchanged after create, before=%d after=%d", beforeInventory, afterCreateInventory)
+	}
+
 	confirmRes := confirmPaymentIntegration(t, kit, createRes.OrderID, 100, "k-1")
 	if confirmRes.OrderID != createRes.OrderID {
 		t.Fatalf("confirm order id mismatch: create=%s confirm=%s", createRes.OrderID, confirmRes.OrderID)
 	}
+	if status := orderStatusByID(t, kit, createRes.OrderID); status != "confirmed" {
+		t.Fatalf("expected order status=confirmed after confirm, got %s", status)
+	}
+	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 1 {
+		t.Fatalf("expected payments=1 after confirm, got %d", payments)
+	}
+	if afterConfirmInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterConfirmInventory != beforeInventory {
+		t.Fatalf("inventory must remain unchanged after confirm, before=%d after=%d", beforeInventory, afterConfirmInventory)
+	}
+
 	getRes := getOrderIntegration(t, kit, createRes.OrderID)
 	if getRes.ID != createRes.OrderID {
 		t.Fatalf("get id mismatch: create=%s get=%s", createRes.OrderID, getRes.ID)
@@ -43,6 +64,7 @@ func TestIntegration_OrderBoundary_注文作成から決済確定と注文参照
 // 根拠: 同じ 200 でも操作ごとの意味差を回帰で崩さないようにするため。
 func TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷移を固定する(t *testing.T) {
 	kit := new境界統合Testkit(t)
+	beforeInventory := inventoryQuantityBySKU(t, kit, "sku-1")
 
 	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
 	if createRes.Status != "accepted" {
@@ -50,9 +72,20 @@ func TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷
 	}
 
 	_ = confirmPaymentIntegration(t, kit, createRes.OrderID, 100, "k-1")
+	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 1 {
+		t.Fatalf("expected payments=1 after confirm, got %d", payments)
+	}
+	if afterConfirmInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterConfirmInventory != beforeInventory {
+		t.Fatalf("inventory must remain unchanged after confirm, before=%d after=%d", beforeInventory, afterConfirmInventory)
+	}
 	getRes := getOrderIntegration(t, kit, createRes.OrderID)
 	if getRes.Status != "confirmed" {
 		t.Fatalf("expected confirmed on get 200 after payment confirm, got %s", getRes.Status)
+	}
+	// 後続API状態として、再取得しても confirmed が維持されることを確認する。
+	getRes2 := getOrderIntegration(t, kit, createRes.OrderID)
+	if getRes2.Status != "confirmed" {
+		t.Fatalf("expected confirmed on second get, got %s", getRes2.Status)
 	}
 }
 
@@ -61,9 +94,25 @@ func TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷
 // 根拠: 境界値の回帰で正当な注文作成が失敗しないことを保証するため。
 func TestIntegration_OrderBoundary_POST_orders_200_quantity境界値1は受理される(t *testing.T) {
 	kit := new境界統合Testkit(t)
-	res := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
-	if res.Status != "accepted" {
-		t.Fatalf("expected accepted, got %s", res.Status)
+	beforeInventory := inventoryQuantityBySKU(t, kit, "sku-1")
+
+	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	if createRes.Status != "accepted" {
+		t.Fatalf("expected accepted, got %s", createRes.Status)
+	}
+	if createRes.OrderID == "" {
+		t.Fatalf("expected non-empty orderId")
+	}
+
+	getRes := getOrderIntegration(t, kit, createRes.OrderID)
+	if getRes.Status != "accepted" {
+		t.Fatalf("expected accepted on follow-up get, got %s", getRes.Status)
+	}
+	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 0 {
+		t.Fatalf("expected payments=0 after create, got %d", payments)
+	}
+	if afterCreateInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterCreateInventory != beforeInventory {
+		t.Fatalf("inventory must remain unchanged after create, before=%d after=%d", beforeInventory, afterCreateInventory)
 	}
 }
 
@@ -74,6 +123,7 @@ func TestIntegration_OrderBoundary_GET_orders_id_200_既存IDは主要項目を�
 	kit := new境界統合Testkit(t)
 
 	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	beforeGet := snapshot境界統合副作用(t, kit)
 	getRes := getOrderIntegration(t, kit, createRes.OrderID)
 
 	if getRes.ID != createRes.OrderID {
@@ -88,6 +138,15 @@ func TestIntegration_OrderBoundary_GET_orders_id_200_既存IDは主要項目を�
 	if len(getRes.Items) != 1 || getRes.Items[0].SKU != "sku-1" || getRes.Items[0].Quantity != 1 {
 		t.Fatalf("unexpected items: %+v", getRes.Items)
 	}
+	// 後続API状態として、再取得でも同じ主要項目が観測できることを確認する。
+	getRes2 := getOrderIntegration(t, kit, createRes.OrderID)
+	if getRes2.ID != getRes.ID || getRes2.CustomerID != getRes.CustomerID || getRes2.Status != getRes.Status {
+		t.Fatalf("expected same projection on second get, first=%+v second=%+v", getRes, getRes2)
+	}
+	afterGet := snapshot境界統合副作用(t, kit)
+	if beforeGet != afterGet {
+		t.Fatalf("GET must not mutate db side effects, before=%+v after=%+v", beforeGet, afterGet)
+	}
 }
 
 // このテストは customerId の同値観測を統合境界で固定する。
@@ -98,9 +157,19 @@ func TestIntegration_OrderBoundary_customerId同値観測_POSTとGETで一致す
 	inputCustomerID := "customer-xyz-01"
 
 	createRes := createOrderIntegration(t, kit, inputCustomerID, "sku-1", 1)
+	beforeGet := snapshot境界統合副作用(t, kit)
 	getRes := getOrderIntegration(t, kit, createRes.OrderID)
 	if getRes.CustomerID != inputCustomerID {
 		t.Fatalf("customerId mismatch: post=%s get=%s", inputCustomerID, getRes.CustomerID)
+	}
+	// 後続API状態として、再取得でも同値が維持されることを確認する。
+	getRes2 := getOrderIntegration(t, kit, createRes.OrderID)
+	if getRes2.CustomerID != inputCustomerID {
+		t.Fatalf("customerId mismatch on second get: post=%s get=%s", inputCustomerID, getRes2.CustomerID)
+	}
+	afterGet := snapshot境界統合副作用(t, kit)
+	if beforeGet != afterGet {
+		t.Fatalf("GET must not mutate db side effects, before=%+v after=%+v", beforeGet, afterGet)
 	}
 }
 
@@ -164,12 +233,32 @@ func TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventory�
 // 根拠: 未存在の意味を 404 として外部境界に固定するため。
 func TestIntegration_OrderBoundary_404の意味_未存在注文参照は404を返す(t *testing.T) {
 	kit := new境界統合Testkit(t)
+	base := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	before := snapshot境界統合副作用(t, kit)
 
 	req := httptest.NewRequest(http.MethodGet, "/orders/missing-order", nil)
 	w := httptest.NewRecorder()
 	kit.Router.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 on missing order get, got %d body=%s", w.Code, strings.TrimSpace(w.Body.String()))
+	}
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if body.Message != "not found" {
+		t.Fatalf("expected message=not found, got %s", body.Message)
+	}
+	// 後続API状態として、既存注文は引き続き参照できることを確認する。
+	getRes := getOrderIntegration(t, kit, base.OrderID)
+	if getRes.Status != "accepted" {
+		t.Fatalf("expected accepted on existing order after missing get, got %s", getRes.Status)
+	}
+	after := snapshot境界統合副作用(t, kit)
+	if before != after {
+		t.Fatalf("missing get must not mutate db side effects, before=%+v after=%+v", before, after)
 	}
 }
 
@@ -302,6 +391,7 @@ func TestIntegration_OrderBoundary_POST_orders_400_全項目無効(t *testing.T)
 // このテストは POST /orders の 400（items空）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_items空(t *testing.T) {
 	kit := new境界統合Testkit(t)
+	base := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
 	before := snapshot境界統合副作用(t, kit)
 
 	payload, _ := json.Marshal(map[string]any{
@@ -314,11 +404,16 @@ func TestIntegration_OrderBoundary_POST_orders_400_items空(t *testing.T) {
 	kit.Router.ServeHTTP(w, req)
 
 	assert400NoSideEffect(t, "P5-ORD-400-08", w, before, snapshot境界統合副作用(t, kit))
+	getRes := getOrderIntegration(t, kit, base.OrderID)
+	if getRes.Status != "accepted" {
+		t.Fatalf("[P5-ORD-400-08] expected base order to remain accepted, got %s", getRes.Status)
+	}
 }
 
 // このテストは POST /orders の 400（重複SKU）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_orders_400_重複SKU(t *testing.T) {
 	kit := new境界統合Testkit(t)
+	base := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
 	before := snapshot境界統合副作用(t, kit)
 
 	payload, _ := json.Marshal(map[string]any{
@@ -334,6 +429,10 @@ func TestIntegration_OrderBoundary_POST_orders_400_重複SKU(t *testing.T) {
 	kit.Router.ServeHTTP(w, req)
 
 	assert400NoSideEffect(t, "P5-ORD-400-09", w, before, snapshot境界統合副作用(t, kit))
+	getRes := getOrderIntegration(t, kit, base.OrderID)
+	if getRes.Status != "accepted" {
+		t.Fatalf("[P5-ORD-400-09] expected base order to remain accepted, got %s", getRes.Status)
+	}
 }
 
 // このテストは POST /payments/confirm の 400（orderId無効）を統合境界で固定する。
@@ -436,12 +535,14 @@ type 境界統合DB副作用スナップショット struct {
 	orders     int
 	orderItems int
 	payments   int
+	inventory  int
 }
 
 func assertCreateOrder400Case(t *testing.T, caseID string, invalidCustomerID, invalidSKU, invalidQuantity bool) {
 	t.Helper()
 
 	kit := new境界統合Testkit(t)
+	base := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
 	before := snapshot境界統合副作用(t, kit)
 
 	customerID := "c-1"
@@ -467,15 +568,21 @@ func assertCreateOrder400Case(t *testing.T, caseID string, invalidCustomerID, in
 	kit.Router.ServeHTTP(w, req)
 
 	assert400NoSideEffect(t, caseID, w, before, snapshot境界統合副作用(t, kit))
+	// 後続API状態として、既存注文が不変で参照できることを確認する。
+	getRes := getOrderIntegration(t, kit, base.OrderID)
+	if getRes.Status != "accepted" {
+		t.Fatalf("[%s] expected base order to remain accepted, got %s", caseID, getRes.Status)
+	}
 }
 
 func assertConfirmPayment400Case(t *testing.T, caseID string, invalidOrderID, invalidAmount, invalidKey bool) {
 	t.Helper()
 
 	kit := new境界統合Testkit(t)
+	base := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
 	before := snapshot境界統合副作用(t, kit)
 
-	orderID := "integration-order-1"
+	orderID := base.OrderID
 	if invalidOrderID {
 		orderID = ""
 	}
@@ -499,6 +606,11 @@ func assertConfirmPayment400Case(t *testing.T, caseID string, invalidOrderID, in
 	kit.Router.ServeHTTP(w, req)
 
 	assert400NoSideEffect(t, caseID, w, before, snapshot境界統合副作用(t, kit))
+	// 後続API状態として、既存注文が不変で参照できることを確認する。
+	getRes := getOrderIntegration(t, kit, base.OrderID)
+	if getRes.Status != "accepted" {
+		t.Fatalf("[%s] expected base order to remain accepted, got %s", caseID, getRes.Status)
+	}
 }
 
 func assert400NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseRecorder, before, after 境界統合DB副作用スナップショット) {
@@ -533,6 +645,9 @@ func snapshot境界統合副作用(t *testing.T, kit *境界統合Testkit) 境�
 	}
 	if err := kit.DB.QueryRow(`SELECT COUNT(*) FROM payments`).Scan(&s.payments); err != nil {
 		t.Fatalf("failed to count payments: %v", err)
+	}
+	if err := kit.DB.QueryRow(`SELECT quantity FROM inventory WHERE sku = 'sku-1'`).Scan(&s.inventory); err != nil {
+		t.Fatalf("failed to fetch inventory quantity: %v", err)
 	}
 	return s
 }
