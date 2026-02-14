@@ -90,6 +90,20 @@ func TestIntegration_OrderBoundary_GET_orders_id_200_既存IDは主要項目を�
 	}
 }
 
+// このテストは customerId の同値観測を統合境界で固定する。
+// 仕様対象: POST /orders の customerId 入力値と GET /orders/{id} 応答値が一致する。
+// 根拠: 主要フィールドの境界互換を実依存経路で回帰検出するため。
+func TestIntegration_OrderBoundary_customerId同値観測_POSTとGETで一致する(t *testing.T) {
+	kit := new境界統合Testkit(t)
+	inputCustomerID := "customer-xyz-01"
+
+	createRes := createOrderIntegration(t, kit, inputCustomerID, "sku-1", 1)
+	getRes := getOrderIntegration(t, kit, createRes.OrderID)
+	if getRes.CustomerID != inputCustomerID {
+		t.Fatalf("customerId mismatch: post=%s get=%s", inputCustomerID, getRes.CustomerID)
+	}
+}
+
 // このテストは エラー分類のうち 404（未存在）を統合境界で固定する。
 // 仕様対象: 存在しない注文IDの参照は 404 を返す。
 // 根拠: 未存在の意味を 404 として外部境界に固定するため。
