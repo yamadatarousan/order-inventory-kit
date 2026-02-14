@@ -80,6 +80,12 @@
 - `Reserved` は注文起点の引当管理に使い、`OnHand` は実在庫管理に使う
 - 在庫数量に関する仕様判断・テスト観測・永続化設計は、この3値定義を単一の基準とする
 
+## 在庫状態遷移（標準モデル）
+- 決定記録: `docs/adr/0001-inventory-stock-model.md`（ADR-0001）
+- 注文作成時は `Reserve` を実行し、`Reserved` を増やす
+- キャンセル/期限切れ時は `Release` を実行し、`Reserved` を減らす
+- 決済確定時は在庫を減算しない（`OnHand` / `Reserved` を変更しない）
+
 ## テスト分類（固定）
 - 不変条件テスト: `backend/tests/domain/`
 - 境界一貫性統合テスト/境界単体テスト: `backend/tests/boundary/`
