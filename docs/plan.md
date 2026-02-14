@@ -300,7 +300,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - [x] `backend/internal/adapter/handler/order_handler_test.go` から移した通しシナリオを `backend/tests/boundary/*_integration_test.go` で固定する
 - [x] 境界一貫性統合テストに観測結果を明記する（HTTPステータス/主要レスポンス項目/後続API状態/副作用DB）
 - [x] CIで boundary テスト全体（unit/integration）を実行しつつ、統合境界テスト（`go test ./tests/boundary -run Integration`）を必須化して rails 通過条件に含める（Integrationテスト0件を失敗扱いにする）
-- [ ] `403` 分類は Phase 7（認可導入）で固定する
+- 注記: `403` 分類は認可導入を前提とするため、Phase 7で固定する
 - 注記: CI接続は Phase 0 の完了条件に従属（ここでは境界観測一貫性テストの内容拡張に専念する）
 - 運用ルール: Phase 5 の完了判定は「網羅マトリクスの完了」を必須とし、代表ケース1本だけでは完了にしない
 - 運用ルール: 局所固定タスク（例: 代表ケース1本、単一分類固定）は、対象APIの網羅後続タスク（入力分類・完了条件付き）が `docs/plan.md` に未完了タスクとして明示されている場合にのみ着手可。未明示なら着手禁止
