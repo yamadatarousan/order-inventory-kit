@@ -134,6 +134,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '409':
+          description: Amount conflict (mismatch or idempotency key reused with different amount)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     CreateOrderRequest:
