@@ -22,7 +22,7 @@ import (
 func TestIntegration_OrderBoundary_注文作成から決済確定と注文参照まで通し検証(t *testing.T) {
 	kit := new境界統合Testkit(t)
 	// 観測4: 操作前の副作用DB基準値を取得する。
-	beforeInventory := inventoryQuantityBySKU(t, kit, "sku-1")
+	beforeInventory := inventoryStateBySKU(t, kit, "sku-1")
 
 	// 観測1/2: createOrderIntegration が HTTP 200 と主要項目(orderId/status)を検証する。
 	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
@@ -36,9 +36,8 @@ func TestIntegration_OrderBoundary_注文作成から決済確定と注文参照
 	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 0 {
 		t.Fatalf("expected payments=0 after create, got %d", payments)
 	}
-	if afterCreateInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterCreateInventory != beforeInventory {
-		t.Fatalf("inventory must remain unchanged after create, before=%d after=%d", beforeInventory, afterCreateInventory)
-	}
+	afterCreateInventory := inventoryStateBySKU(t, kit, "sku-1")
+	assertInventoryReserveTransition(t, "after create", beforeInventory, afterCreateInventory, 1)
 
 	// 観測1/2: confirmPaymentIntegration が HTTP 200 と主要項目(orderId/paymentStatus)を検証する。
 	confirmRes := confirmPaymentIntegration(t, kit, createRes.OrderID, 100, "k-1")
@@ -52,9 +51,8 @@ func TestIntegration_OrderBoundary_注文作成から決済確定と注文参照
 	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 1 {
 		t.Fatalf("expected payments=1 after confirm, got %d", payments)
 	}
-	if afterConfirmInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterConfirmInventory != beforeInventory {
-		t.Fatalf("inventory must remain unchanged after confirm, before=%d after=%d", beforeInventory, afterConfirmInventory)
-	}
+	afterConfirmInventory := inventoryStateBySKU(t, kit, "sku-1")
+	assertInventoryUnchanged(t, "after confirm", afterCreateInventory, afterConfirmInventory)
 
 	// 観測1/2: getOrderIntegration が HTTP 200 と主要項目(id/customerId/status/items)を検証する。
 	getRes := getOrderIntegration(t, kit, createRes.OrderID)
@@ -78,7 +76,7 @@ func TestIntegration_OrderBoundary_注文作成から決済確定と注文参照
 func TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷移を固定する(t *testing.T) {
 	kit := new境界統合Testkit(t)
 	// 観測4: 操作前の副作用DB基準値を取得する。
-	beforeInventory := inventoryQuantityBySKU(t, kit, "sku-1")
+	beforeInventory := inventoryStateBySKU(t, kit, "sku-1")
 
 	// 観測1/2: createOrderIntegration が HTTP 200 と主要項目(orderId/status)を検証する。
 	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
@@ -92,9 +90,8 @@ func TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷
 	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 1 {
 		t.Fatalf("expected payments=1 after confirm, got %d", payments)
 	}
-	if afterConfirmInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterConfirmInventory != beforeInventory {
-		t.Fatalf("inventory must remain unchanged after confirm, before=%d after=%d", beforeInventory, afterConfirmInventory)
-	}
+	afterConfirmInventory := inventoryStateBySKU(t, kit, "sku-1")
+	assertInventoryReserveTransition(t, "after create+confirm", beforeInventory, afterConfirmInventory, 1)
 	// 観測1/2: getOrderIntegration が HTTP 200 と主要項目を検証する。
 	getRes := getOrderIntegration(t, kit, createRes.OrderID)
 	if getRes.Status != "confirmed" {
@@ -113,7 +110,7 @@ func TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷
 func TestIntegration_OrderBoundary_POST_orders_200_quantity境界値1は受理される(t *testing.T) {
 	kit := new境界統合Testkit(t)
 	// 観測4: 操作前の副作用DB基準値を取得する。
-	beforeInventory := inventoryQuantityBySKU(t, kit, "sku-1")
+	beforeInventory := inventoryStateBySKU(t, kit, "sku-1")
 
 	// 観測1/2: createOrderIntegration が HTTP 200 と主要項目(orderId/status)を検証する。
 	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
@@ -134,9 +131,8 @@ func TestIntegration_OrderBoundary_POST_orders_200_quantity境界値1は受理�
 	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 0 {
 		t.Fatalf("expected payments=0 after create, got %d", payments)
 	}
-	if afterCreateInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterCreateInventory != beforeInventory {
-		t.Fatalf("inventory must remain unchanged after create, before=%d after=%d", beforeInventory, afterCreateInventory)
-	}
+	afterCreateInventory := inventoryStateBySKU(t, kit, "sku-1")
+	assertInventoryReserveTransition(t, "after create", beforeInventory, afterCreateInventory, 1)
 }
 
 // このテストは GET /orders/{id} の 200 を統合境界で固定する。
@@ -205,7 +201,7 @@ func TestIntegration_OrderBoundary_customerId同値観測_POSTとGETで一致す
 }
 
 // このテストは副作用DB観測（orders/payments/inventory）を統合境界で固定する。
-// 仕様対象: 注文作成/決済確定時の orders状態・payments件数・inventory数量 の変化。
+// 仕様対象: 注文作成/決済確定時の orders状態・payments件数・inventory(on_hand/reserved/available) の変化。
 // 根拠: API応答だけでは検出できない永続状態の回帰を検出するため。
 func TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventoryを固定する(t *testing.T) {
 	kit := new境界統合Testkit(t)
@@ -213,8 +209,8 @@ func TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventory�
 	// 本テストでは有効値として固定値を使う。
 	validAmount := 100
 
-	// 観測4: 以降の在庫不変確認で比較するため、操作前の在庫数量を取得する。
-	beforeInventory := inventoryQuantityBySKU(t, kit, "sku-1")
+	// 観測4: 以降の在庫遷移確認で比較するため、操作前の在庫状態を取得する。
+	beforeInventory := inventoryStateBySKU(t, kit, "sku-1")
 	// 操作前に対象注文IDの決済記録が存在しないことを確認する。
 	if paymentsCountByOrder(t, kit, "integration-order-1") != 0 {
 		t.Fatalf("expected no payments before create")
@@ -232,10 +228,9 @@ func TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventory�
 	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 0 {
 		t.Fatalf("expected payments=0 after create, got %d", payments)
 	}
-	// 現行仕様では注文作成時に在庫数量は変化しないこと。
-	if afterCreateInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterCreateInventory != beforeInventory {
-		t.Fatalf("inventory must remain unchanged after create, before=%d after=%d", beforeInventory, afterCreateInventory)
-	}
+	// 標準在庫モデルでは注文作成時に引当が発生し、on_hand不変・reserved増・available減となること。
+	afterCreateInventory := inventoryStateBySKU(t, kit, "sku-1")
+	assertInventoryReserveTransition(t, "after create", beforeInventory, afterCreateInventory, 1)
 
 	// 観測1/2: confirmPaymentIntegration が HTTP 200 と主要項目(orderId/paymentStatus)を検証する。
 	// 2. 決済確定を実行し、確定後のDB副作用を確認する。
@@ -249,10 +244,9 @@ func TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventory�
 	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 1 {
 		t.Fatalf("expected payments=1 after first confirm, got %d", payments)
 	}
-	// 現行仕様では決済確定時も在庫数量は変化しないこと。
-	if afterConfirmInventory := inventoryQuantityBySKU(t, kit, "sku-1"); afterConfirmInventory != beforeInventory {
-		t.Fatalf("inventory must remain unchanged after confirm, before=%d after=%d", beforeInventory, afterConfirmInventory)
-	}
+	// 標準在庫モデルでは決済確定で在庫は減算せず、注文作成時点の引当状態を維持すること。
+	afterConfirmInventory := inventoryStateBySKU(t, kit, "sku-1")
+	assertInventoryUnchanged(t, "after confirm", afterCreateInventory, afterConfirmInventory)
 
 	// 観測3: 同一キー再送時の後続API状態（冪等）を確認する。
 	// 3. 同一キー再送時の冪等性として、決済記録が増えないことを確認する。
@@ -301,6 +295,8 @@ func TestIntegration_OrderBoundary_404の意味_未存在注文参照は404を�
 	}
 }
 
+// createOrderIntegration は POST /orders の成功系呼び出しを共通化する。
+// 4観測のうち HTTPステータス(200) と主要レスポンス項目(orderId/status) をこの関数で固定する。
 func createOrderIntegration(t *testing.T, kit *境界統合Testkit, customerID, sku string, quantity int) struct {
 	OrderID string `json:"orderId"`
 	Status  string `json:"status"`
@@ -331,6 +327,8 @@ func createOrderIntegration(t *testing.T, kit *境界統合Testkit, customerID, 
 	return res
 }
 
+// confirmPaymentIntegration は POST /payments/confirm の成功系呼び出しを共通化する。
+// 4観測のうち HTTPステータス(200) と主要レスポンス項目(orderId/paymentStatus) をこの関数で固定する。
 func confirmPaymentIntegration(t *testing.T, kit *境界統合Testkit, orderID string, amount int, key string) struct {
 	OrderID       string `json:"orderId"`
 	PaymentStatus string `json:"paymentStatus"`
@@ -363,6 +361,8 @@ func confirmPaymentIntegration(t *testing.T, kit *境界統合Testkit, orderID s
 	return res
 }
 
+// getOrderIntegration は GET /orders/{id} の成功系呼び出しを共通化する。
+// 4観測のうち HTTPステータス(200) と主要レスポンス項目(id/customerId/status/items) をこの関数で固定する。
 func getOrderIntegration(t *testing.T, kit *境界統合Testkit, orderID string) struct {
 	ID         string `json:"id"`
 	CustomerID string `json:"customerId"`
@@ -605,9 +605,11 @@ type 境界統合DB副作用スナップショット struct {
 	orders     int
 	orderItems int
 	payments   int
-	inventory  int
+	inventory  inventoryState
 }
 
+// assertCreateOrder400Case は POST /orders の入力無効組み合わせを共通検証する。
+// 400分類、エラーメッセージ、副作用なし、既存注文の後続状態不変を一括で固定する。
 func assertCreateOrder400Case(t *testing.T, caseID string, invalidCustomerID, invalidSKU, invalidQuantity bool) {
 	t.Helper()
 
@@ -646,6 +648,8 @@ func assertCreateOrder400Case(t *testing.T, caseID string, invalidCustomerID, in
 	}
 }
 
+// assertConfirmPayment400Case は POST /payments/confirm の入力無効組み合わせを共通検証する。
+// 400分類、エラーメッセージ、副作用なし、既存注文の後続状態不変を一括で固定する。
 func assertConfirmPayment400Case(t *testing.T, caseID string, invalidOrderID, invalidAmount, invalidKey bool) {
 	t.Helper()
 
@@ -685,6 +689,8 @@ func assertConfirmPayment400Case(t *testing.T, caseID string, invalidOrderID, in
 	}
 }
 
+// assert400NoSideEffect は 400エラー時の共通契約を検証する。
+// invalid request の返却と、副作用DBスナップショット不変を固定する。
 func assert400NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseRecorder, before, after 境界統合DB副作用スナップショット) {
 	t.Helper()
 
@@ -705,6 +711,8 @@ func assert400NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseReco
 	}
 }
 
+// snapshot境界統合副作用 は副作用DB観測の比較用スナップショットを取得する。
+// orders/order_items/payments 件数と inventory状態(on_hand/reserved/available) を採取する。
 func snapshot境界統合副作用(t *testing.T, kit *境界統合Testkit) 境界統合DB副作用スナップショット {
 	t.Helper()
 
@@ -718,12 +726,12 @@ func snapshot境界統合副作用(t *testing.T, kit *境界統合Testkit) 境�
 	if err := kit.DB.QueryRow(`SELECT COUNT(*) FROM payments`).Scan(&s.payments); err != nil {
 		t.Fatalf("failed to count payments: %v", err)
 	}
-	if err := kit.DB.QueryRow(`SELECT quantity FROM inventory WHERE sku = 'sku-1'`).Scan(&s.inventory); err != nil {
-		t.Fatalf("failed to fetch inventory quantity: %v", err)
-	}
+	s.inventory = inventoryStateBySKU(t, kit, "sku-1")
 	return s
 }
 
+// orderStatusByID は orders テーブルの状態列を直接観測する。
+// API応答ではなく永続状態の確認に使う。
 func orderStatusByID(t *testing.T, kit *境界統合Testkit, orderID string) string {
 	t.Helper()
 
@@ -734,6 +742,8 @@ func orderStatusByID(t *testing.T, kit *境界統合Testkit, orderID string) str
 	return status
 }
 
+// paymentsCountByOrder は order_id に紐づく決済件数を観測する。
+// 冪等性と副作用件数の固定に使う。
 func paymentsCountByOrder(t *testing.T, kit *境界統合Testkit, orderID string) int {
 	t.Helper()
 
@@ -744,12 +754,50 @@ func paymentsCountByOrder(t *testing.T, kit *境界統合Testkit, orderID string
 	return count
 }
 
-func inventoryQuantityBySKU(t *testing.T, kit *境界統合Testkit, sku string) int {
+type inventoryState struct {
+	OnHand    int
+	Reserved  int
+	Available int
+}
+
+// inventoryStateBySKU は在庫の3値観測を取得する。
+// Available は DB列ではなく OnHand-Reserved で導出して検証軸を揃える。
+func inventoryStateBySKU(t *testing.T, kit *境界統合Testkit, sku string) inventoryState {
 	t.Helper()
 
-	var qty int
-	if err := kit.DB.QueryRow(`SELECT quantity FROM inventory WHERE sku = $1`, sku).Scan(&qty); err != nil {
-		t.Fatalf("failed to fetch inventory quantity: %v", err)
+	var s inventoryState
+	if err := kit.DB.QueryRow(`SELECT on_hand, reserved FROM inventory WHERE sku = $1`, sku).Scan(&s.OnHand, &s.Reserved); err != nil {
+		t.Fatalf("failed to fetch inventory state: %v", err)
 	}
-	return qty
+	s.Available = s.OnHand - s.Reserved
+	return s
+}
+
+// assertInventoryReserveTransition は注文作成時の在庫遷移を検証する。
+// on_hand 不変、reserved 増、available 減、および恒等式を固定する。
+func assertInventoryReserveTransition(t *testing.T, point string, before, after inventoryState, reserveQty int) {
+	t.Helper()
+
+	if after.OnHand != before.OnHand {
+		t.Fatalf("%s: on_hand must remain unchanged, before=%d after=%d", point, before.OnHand, after.OnHand)
+	}
+	if after.Reserved != before.Reserved+reserveQty {
+		t.Fatalf("%s: reserved must increase by %d, before=%d after=%d", point, reserveQty, before.Reserved, after.Reserved)
+	}
+	if after.Available != before.Available-reserveQty {
+		t.Fatalf("%s: available must decrease by %d, before=%d after=%d", point, reserveQty, before.Available, after.Available)
+	}
+	if after.Available != after.OnHand-after.Reserved {
+		t.Fatalf("%s: available identity broken, on_hand=%d reserved=%d available=%d", point, after.OnHand, after.Reserved, after.Available)
+	}
+}
+
+// assertInventoryUnchanged は比較時点間で在庫3値が不変であることを検証する。
+// 決済確定時の在庫非減算ルールの固定に使う。
+func assertInventoryUnchanged(t *testing.T, point string, before, after inventoryState) {
+	t.Helper()
+
+	if before != after {
+		t.Fatalf("%s: inventory state must remain unchanged, before=%+v after=%+v", point, before, after)
+	}
 }
