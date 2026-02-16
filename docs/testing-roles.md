@@ -30,6 +30,7 @@
 - 主要レスポンス項目
 - 後続APIで観測される状態
 - 副作用DB（orders/payments/inventory）
+  - inventory は `on_hand` / `reserved` / `available`（`available = on_hand - reserved`）で観測する
 
 主要レスポンス項目の例:
 - `POST /orders`: `orderId`, `status`
@@ -54,7 +55,7 @@
 - エンドポイント単位の網羅が完了していること
   - `POST /orders`: `200/400`
   - `GET /orders/{id}`: `200/404`
-  - `POST /payments/confirm`: `200/400/404/冪等`
+  - `POST /payments/confirm`: `200/400/404/409/冪等（同額/異額）`
 - `400` は各エンドポイントで入力検証項目の無効組み合わせを全列挙していること
   - n項目なら `2^n - 1`（空集合除く）ケース以上
   - 3項目なら 7 ケース（1項目無効/2項目無効/3項目無効）
@@ -90,7 +91,7 @@
 
 | ケースID | 対象API | 入力分類 | 期待HTTP | 4観測（主要項目・後続API状態・副作用DB） | 対応テスト関数 | 状態 |
 |---|---|---|---|---|---|---|
-| P5-ORD-200-01 | POST /orders | 正常入力 | 200 | `orderId/status`、後続GETで同一ID観測、orders作成/inventory不変 | `TestIntegration_OrderBoundary_注文作成から決済確定と注文参照まで通し検証` | 完了 |
+| P5-ORD-200-01 | POST /orders | 正常入力 | 200 | `orderId/status`、後続GETで同一ID観測、orders作成/`reserved`増/`available`減/`on_hand`不変 | `TestIntegration_OrderBoundary_注文作成から決済確定と注文参照まで通し検証` | 完了 |
 | P5-ORD-200-02 | POST /orders | quantity境界値（1） | 200 | `status=accepted`、後続状態作成可、DB副作用あり | `TestIntegration_OrderBoundary_POST_orders_200_quantity境界値1は受理される` | 完了 |
 | P5-ORD-400-01 | POST /orders | customerId無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_customerId無効` | 完了 |
 | P5-ORD-400-02 | POST /orders | items[*].sku無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_sku無効` | 完了 |
@@ -104,8 +105,9 @@
 | P5-GET-200-01 | GET /orders/{id} | 既存ID | 200 | `id/customerId/status/items`、前段POSTとの同値、DB読取整合 | `TestIntegration_OrderBoundary_GET_orders_id_200_既存IDは主要項目を返す` | 完了 |
 | P5-GET-404-01 | GET /orders/{id} | 未存在ID | 404 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_404の意味_未存在注文参照は404を返す` | 完了 |
 | P5-GET-CID-01 | GET /orders/{id} | customerId同値観測 | 200 | POST入力の`customerId`とGET応答の`customerId`同値、後続状態整合、DB読取整合 | `TestIntegration_OrderBoundary_customerId同値観測_POSTとGETで一致する` | 完了 |
-| P5-SFX-01 | POST /orders + POST /payments/confirm | 副作用DB観測（orders/payments/inventory） | 200 | orders状態（accepted→confirmed）、payments件数（0→1）、inventory数量（不変）をDBで検証 | `TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventoryを固定する` | 完了 |
+| P5-SFX-01 | POST /orders + POST /payments/confirm | 副作用DB観測（orders/payments/inventory） | 200 | orders状態（accepted→confirmed）、payments件数（0→1）、inventoryは作成時`reserved`増/`available`減・決済時不変をDBで検証 | `TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventoryを固定する` | 完了 |
 | P5-PAY-200-01 | POST /payments/confirm | 正常入力 | 200 | `paymentStatus`、後続GETで`confirmed`、payments更新 | `TestIntegration_OrderBoundary_200の意味_acceptedからconfirmedへの遷移を固定する` | 完了 |
+| P5-PAY-200-02 | POST /payments/confirm | 金額一致 | 200 | `paymentStatus`、後続GETで`confirmed`、payments更新、inventory不変 | `TestIntegration_OrderBoundary_POST_payments_confirm_200_金額一致` | 完了 |
 | P5-PAY-400-01 | POST /payments/confirm | orderId無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_orderId無効` | 完了 |
 | P5-PAY-400-02 | POST /payments/confirm | amount無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_amount無効` | 完了 |
 | P5-PAY-400-03 | POST /payments/confirm | idempotencyKey無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_key無効` | 完了 |
@@ -114,7 +116,9 @@
 | P5-PAY-400-06 | POST /payments/confirm | amount+idempotencyKey無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_amountとkey無効` | 完了 |
 | P5-PAY-400-07 | POST /payments/confirm | orderId+amount+idempotencyKey無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_400_全項目無効` | 完了 |
 | P5-PAY-404-01 | POST /payments/confirm | 未存在orderId | 404 | エラー応答、注文状態不変、payments件数不変 | `TestIntegration_OrderBoundary_POST_payments_confirm_404_未存在orderId` | 完了 |
-| P5-PAY-IDEMP-01 | POST /payments/confirm | 同一キー再送 | 200 | 応答同値、後続状態不変、payments二重計上なし | `TestIntegration_OrderBoundary_POST_payments_confirm_冪等_同一キー再送` | 完了 |
+| P5-PAY-409-01 | POST /payments/confirm | 金額不一致 | 409 | エラー応答、注文状態不変（accepted）、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_409_金額不一致` | 完了 |
+| P5-PAY-IDEMP-01 | POST /payments/confirm | 同一キー同額再送 | 200 | 応答同値、後続状態不変、payments二重計上なし | `TestIntegration_OrderBoundary_POST_payments_confirm_冪等_同一キー再送` | 完了 |
+| P5-PAY-IDEMP-02 | POST /payments/confirm | 同一キー異額再送 | 409 | エラー応答、後続状態不変（confirmed）、DB副作用なし | `TestIntegration_OrderBoundary_POST_payments_confirm_冪等_異額再送は409` | 完了 |
 
 - 完了判定ルール:
   - 状態が `未着手` または `実装中` の行が1つでもある間は Phase 5 を完了扱いにしない
@@ -128,7 +132,7 @@
   - 実装上の関数名を抽出:
     - `rg -o '^func (TestIntegration_[^(]+)' backend/tests/boundary/order_boundary_integration_test.go -r '$1' | sort -u`
   - `comm` で差分を確認し、片側だけに存在する関数を欠落ケースとして扱う
-- 現在の可視化結果（2026-02-14）:
+- 現在の可視化結果（2026-02-16）:
   - `MISSING_IN_TESTS`: なし
   - `MISSING_IN_MATRIX`: なし
 
