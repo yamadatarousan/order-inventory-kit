@@ -108,6 +108,15 @@
 - `unit_price` はサーバ側価格情報を決定元として設定する
 - クライアント入力の価格は決定元として採用しない
 
+## 既存注文データの金額移行方針（`order_items.unit_price` 導入時）
+- 決定記録: `docs/adr/0002-payment-amount-consistency.md`（ADR-0002）
+- 背景: 学習用システムとして個別例外運用を避け、単純な運用に寄せる
+- 既存行 `order_items.unit_price` は `product_prices.unit_price` で機械的バックフィルする
+- バックフィル後に `unit_price` 欠損を残さない
+- 金額項目（`unitPrice` / `lineAmount` / `totalAmount`）は全注文で算出可能にする
+- `order_items.sku` に対応する `product_prices` が無い場合は、そのSKUを含む注文を削除する
+- 削除は注文単位で行い、`orders` / `order_items` / `payments` の整合を崩さない
+
 ## テスト分類（固定）
 - 不変条件テスト: `backend/tests/domain/`
 - 境界一貫性統合テスト/境界単体テスト: `backend/tests/boundary/`

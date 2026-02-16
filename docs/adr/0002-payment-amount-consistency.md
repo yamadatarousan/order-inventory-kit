@@ -6,6 +6,7 @@
 ## Context
 - `POST /payments/confirm` の `amount` は存在するが、注文金額との整合ルールが未定義だと挙動がぶれる
 - クライアント入力値のみを信頼すると、改ざんや整合崩れを検出できない
+- このシステムは学習用であり、個別運用や例外分岐を増やさず、単純な運用に寄せる方針を採る
 
 ## Decision
 - `amount` は「決済要求額」を表す（最小通貨単位の整数）
@@ -21,6 +22,16 @@
 - 冪等再送（同一 `idempotencyKey`）
   - 同額再送: 成功（同一結果）
   - 異額再送: `409`
+
+## 既存注文データ移行方針（`order_items.unit_price` 導入時）
+- 方針: 既存行の `order_items.unit_price` は `product_prices.unit_price` で機械的バックフィルする
+  - 理由: 学習用システムとして運用の例外を減らし、金額系の経路を単純化するため
+- 既存行の扱い:
+  - バックフィル後は `unit_price` 欠損を残さない
+  - 金額項目（`unitPrice` / `lineAmount` / `totalAmount`）は全注文で算出可能にする
+- バックフィル不能SKUの扱い:
+  - `order_items.sku` に対応する `product_prices` が存在しない場合、そのSKUを含む注文を削除する
+  - 削除は注文単位で行い、関連する `order_items` / `payments` も合わせて消える状態を維持する
 
 ## Consequences
 - OpenAPIに `409` 分類（不一致/異額再送）を追加する
