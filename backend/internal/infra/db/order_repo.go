@@ -2,7 +2,9 @@
 package db
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 
 	"order-inventory-kit/internal/domain"
 )
@@ -19,20 +21,46 @@ func NewOrderRepository(db *sql.DB) *OrderRepository {
 
 // Create は注文を保存する。
 func (r *OrderRepository) Create(order domain.Order) error {
-	_, err := r.db.Exec(`
+	tx, err := r.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	_, err = tx.Exec(`
 		INSERT INTO orders (id, customer_id, status) VALUES ($1, $2, $3)
 	`, order.ID, order.CustomerID, order.Status)
 	if err != nil {
 		return err
 	}
 	for _, item := range order.Items {
-		_, err := r.db.Exec(`
-			INSERT INTO order_items (order_id, sku, quantity) VALUES ($1, $2, $3)
+		result, err := tx.Exec(`
+			INSERT INTO order_items (order_id, sku, quantity, unit_price)
+			SELECT $1, $2, $3, product_prices.unit_price
+			FROM product_prices
+			WHERE product_prices.sku = $2
 		`, order.ID, item.SKU, item.Quantity)
 		if err != nil {
 			return err
 		}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows != 1 {
+			return errors.New("price not found")
+		}
 	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
 	return nil
 }
 

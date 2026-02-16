@@ -55,16 +55,33 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  quantity INTEGER NOT NULL CHECK (quantity >= 1),
 		  PRIMARY KEY (order_id, sku)
 		);
+		ALTER TABLE order_items
+		  ADD COLUMN IF NOT EXISTS unit_price INTEGER;
+		ALTER TABLE order_items
+		  DROP CONSTRAINT IF EXISTS order_items_unit_price_non_negative;
+		ALTER TABLE order_items
+		  ADD CONSTRAINT order_items_unit_price_non_negative CHECK (unit_price IS NULL OR unit_price >= 0);
 		CREATE TABLE IF NOT EXISTS payments (
 		  order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
 		  idempotency_key TEXT NOT NULL,
 		  status TEXT NOT NULL,
 		  PRIMARY KEY (order_id, idempotency_key)
 		);
+		CREATE TABLE IF NOT EXISTS product_prices (
+		  sku TEXT PRIMARY KEY,
+		  unit_price INTEGER NOT NULL CHECK (unit_price >= 0),
+		  currency TEXT NOT NULL CHECK (currency = 'JPY')
+		);
 		CREATE TABLE IF NOT EXISTS inventory (
 		  sku TEXT PRIMARY KEY,
 		  quantity INTEGER NOT NULL CHECK (quantity >= 0)
 		);
+		INSERT INTO product_prices (sku, unit_price, currency) VALUES
+		  ('sku-1', 100, 'JPY'),
+		  ('sku-2', 80, 'JPY'),
+		  ('sku-3', 50, 'JPY')
+		ON CONFLICT (sku) DO UPDATE
+		SET unit_price = EXCLUDED.unit_price, currency = EXCLUDED.currency;
 		ALTER TABLE orders
 		  ADD COLUMN IF NOT EXISTS customer_id TEXT;
 		UPDATE orders SET customer_id = 'unknown' WHERE customer_id IS NULL;
