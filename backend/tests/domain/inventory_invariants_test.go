@@ -28,6 +28,13 @@ func TestNewInventory_不変条件_OnHandまたはReservedが負数なら失敗(
 	}
 }
 
+func TestNewInventory_不変条件_SKUは必須(t *testing.T) {
+	_, err := domain.NewInventory("", 10, 0)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
 func TestInventory_不変条件_過剰確保は失敗し状態が変化しない(t *testing.T) {
 	inv, _ := domain.NewInventory("sku-1", 10, 2)
 	if err := inv.Reserve(9); err == nil {
