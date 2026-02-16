@@ -158,3 +158,75 @@ func TestConfirmPayment_不変条件_同一キー再送で支払いが二重計�
 		t.Fatalf("payment keys must not increase, got %d", payments.confirmedCount("order-1"))
 	}
 }
+
+func TestConfirmPayment_不変条件_金額一致時は成功する(t *testing.T) {
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	orders := &確定不変条件用OrderRepo{order: order}
+	payments := new確定不変条件用PaymentRepo()
+	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
+
+	_, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
+		OrderID:        "order-1",
+		Amount:         100,
+		IdempotencyKey: "k-amount-ok",
+	})
+	if err != nil {
+		t.Fatalf("amount matched confirm must succeed: %v", err)
+	}
+}
+
+func TestConfirmPayment_不変条件_合計算出に不一致の金額は失敗する(t *testing.T) {
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
+	orders := &確定不変条件用OrderRepo{order: order}
+	payments := new確定不変条件用PaymentRepo()
+	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
+
+	_, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
+		OrderID:        "order-1",
+		Amount:         100,
+		IdempotencyKey: "k-amount-mismatch",
+	})
+	if err == nil {
+		t.Fatalf("amount mismatch must fail")
+	}
+	if orders.order.Status != domain.OrderStatusAccepted {
+		t.Fatalf("status must remain accepted, got %s", orders.order.Status)
+	}
+	if orders.updateCalls != 0 {
+		t.Fatalf("order update side effect must remain 0, got %d", orders.updateCalls)
+	}
+	if payments.confirmCalls != 0 {
+		t.Fatalf("payment confirm side effect must remain 0, got %d", payments.confirmCalls)
+	}
+}
+
+func TestConfirmPayment_不変条件_同一キー異額再送は失敗し副作用が増えない(t *testing.T) {
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	orders := &確定不変条件用OrderRepo{order: order}
+	payments := new確定不変条件用PaymentRepo()
+	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
+
+	_, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
+		OrderID:        "order-1",
+		Amount:         100,
+		IdempotencyKey: "k-same-key",
+	})
+	if err != nil {
+		t.Fatalf("first confirm must succeed: %v", err)
+	}
+
+	_, err = uc.ConfirmPayment(usecase.ConfirmPaymentInput{
+		OrderID:        "order-1",
+		Amount:         101,
+		IdempotencyKey: "k-same-key",
+	})
+	if err == nil {
+		t.Fatalf("same key with different amount must fail")
+	}
+	if orders.updateCalls != 1 {
+		t.Fatalf("order update side effect must not increase, got %d", orders.updateCalls)
+	}
+	if payments.confirmCalls != 1 {
+		t.Fatalf("payment confirm side effect must not increase, got %d", payments.confirmCalls)
+	}
+}
