@@ -131,3 +131,37 @@ func TestInventory_不変条件_戻し成功でReservedのみ減りAvailableが�
 		t.Fatalf("expected available 9, got %d", inv.Available())
 	}
 }
+
+func TestInventory_不変条件_在庫恒等式_各操作後にavailableはonHandマイナスreservedと一致する(t *testing.T) {
+	inv, _ := domain.NewInventory("sku-1", 10, 3)
+	assert在庫恒等式(t, inv)
+
+	if err := inv.Reserve(2); err != nil {
+		t.Fatalf("reserve must succeed: %v", err)
+	}
+	assert在庫恒等式(t, inv)
+
+	if err := inv.Reserve(100); err == nil {
+		t.Fatalf("reserve over available must fail")
+	}
+	assert在庫恒等式(t, inv)
+
+	if err := inv.Release(1); err != nil {
+		t.Fatalf("release must succeed: %v", err)
+	}
+	assert在庫恒等式(t, inv)
+
+	if err := inv.Release(100); err == nil {
+		t.Fatalf("release over reserved must fail")
+	}
+	assert在庫恒等式(t, inv)
+}
+
+func assert在庫恒等式(t *testing.T, inv domain.Inventory) {
+	t.Helper()
+	want := inv.OnHand - inv.Reserved
+	got := inv.Available()
+	if got != want {
+		t.Fatalf("available invariant broken: available=%d want=%d (onHand=%d reserved=%d)", got, want, inv.OnHand, inv.Reserved)
+	}
+}
