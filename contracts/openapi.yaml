@@ -4,6 +4,12 @@ openapi: 3.0.3
 info:
   title: Order Inventory API
   version: 0.1.0
+  description: |
+    在庫は標準モデル（OnHand / Reserved / Available）で扱う。
+    Available は OnHand - Reserved で定義する。
+    注文作成で Reserved を増加（Reserve）、キャンセルで Reserved を減少（Release）する。
+    決済確定では在庫を減算しない（OnHand / Reserved は不変）。
+    出荷機能は本契約の対象外であり、出荷確定での OnHand 減算は未導入。
 servers:
   - url: http://localhost:8080
 paths:
@@ -22,6 +28,9 @@ paths:
           description: Order accepted
           # 200の意味を固定する（accepted）
           # 200が返る＝注文が受理され、以降の参照で確認可能である前提
+          # 在庫前提:
+          # - 注文作成時に Reserve を実行し、Reserved を増加させる
+          # - OnHand は変更しない
           content:
             application/json:
               schema:
@@ -70,6 +79,9 @@ paths:
       responses:
         '200':
           description: Order canceled
+          # 在庫前提:
+          # - キャンセル時に Release を実行し、Reserved を減少させる
+          # - OnHand は変更しない
           content:
             application/json:
               schema:
@@ -95,6 +107,9 @@ paths:
           description: Payment confirmed
           # 冪等性の固定は境界テストで担保する
           # 同一 idempotencyKey での二重課金が起きないことが条件
+          # 在庫前提:
+          # - 決済確定では在庫を減算しない
+          # - OnHand / Reserved は不変
           content:
             application/json:
               schema:
@@ -203,3 +218,25 @@ components:
       properties:
         message:
           type: string
+    InventoryBalance:
+      type: object
+      description: |
+        標準在庫モデルの在庫表現。
+        Available は OnHand - Reserved で定義する。
+      required:
+        - onHand
+        - reserved
+        - available
+      properties:
+        onHand:
+          type: integer
+          minimum: 0
+          description: 実在庫（出荷確定で減算対象）
+        reserved:
+          type: integer
+          minimum: 0
+          description: 引当済み在庫（注文作成で増加、キャンセル/期限切れで減少）
+        available:
+          type: integer
+          minimum: 0
+          description: 販売可能在庫（onHand - reserved）

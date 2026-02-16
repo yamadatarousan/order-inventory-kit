@@ -109,6 +109,18 @@ export interface components {
         Error: {
             message: string;
         };
+        /**
+         * @description 標準在庫モデルの在庫表現。
+         *     Available は OnHand - Reserved で定義する。
+         */
+        InventoryBalance: {
+            /** @description 実在庫（出荷確定で減算対象） */
+            onHand: number;
+            /** @description 引当済み在庫（注文作成で増加、キャンセル/期限切れで減少） */
+            reserved: number;
+            /** @description 販売可能在庫（onHand - reserved） */
+            available: number;
+        };
     };
     responses: never;
     parameters: never;
