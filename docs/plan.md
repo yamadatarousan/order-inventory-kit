@@ -339,7 +339,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
   - [x] Green着手条件を満たす（目的1完了、目的2のRed失敗確認済み）
   - [x] 在庫スキーマ移行を追加する（`inventory.quantity` から `inventory.on_hand` / `inventory.reserved` へ移行）
   - [x] 既存データ移行方針を固定する（`on_hand=旧quantity`、`reserved=0` でバックフィル）
-  - [ ] seed/init データを標準モデルへ更新する（`on_hand` / `reserved` を投入する）
+  - [x] seed/init データを標準モデルへ更新する（`on_hand` / `reserved` を投入する）
   - [ ] 価格モデルを導入する（価格情報と `order_items.unit_price` を追加し、注文時に価格スナップショットを保存する）
   - [ ] 決済永続化に `amount` を保存する（`payments.amount` 追加と既存データ移行方針を定義）
   - [ ] 既存注文データの金額移行方針を固定する（`order_items.unit_price` 導入時のバックフィル/扱いを定義）
