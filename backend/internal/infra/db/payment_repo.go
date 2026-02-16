@@ -26,9 +26,9 @@ func (r *PaymentRepository) IsConfirmed(orderID, idempotencyKey string) bool {
 }
 
 // Confirm は決済を確定する。
-func (r *PaymentRepository) Confirm(orderID, idempotencyKey string) error {
+func (r *PaymentRepository) Confirm(orderID, idempotencyKey string, amount int) error {
 	_, err := r.db.Exec(`
-		INSERT INTO payments (order_id, idempotency_key, status) VALUES ($1, $2, 'confirmed')
-	`, orderID, idempotencyKey)
+		INSERT INTO payments (order_id, idempotency_key, status, amount) VALUES ($1, $2, 'confirmed', $3)
+	`, orderID, idempotencyKey, amount)
 	return err
 }

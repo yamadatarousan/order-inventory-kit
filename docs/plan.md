@@ -341,7 +341,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
   - [x] 既存データ移行方針を固定する（`on_hand=旧quantity`、`reserved=0` でバックフィル）
   - [x] seed/init データを標準モデルへ更新する（`on_hand` / `reserved` を投入する）
   - [x] 価格モデルを導入する（価格情報と `order_items.unit_price` を追加し、注文時に価格スナップショットを保存する）
-  - [ ] 決済永続化に `amount` を保存する（`payments.amount` 追加と既存データ移行方針を定義）
+  - [x] 決済永続化に `amount` を保存する（`payments.amount` 追加と既存データ移行方針を定義）
   - [ ] 既存注文データの金額移行方針を固定する（`order_items.unit_price` 導入時のバックフィル/扱いを定義）
   - [ ] Inventory ドメインを標準モデルへ更新する（単一 `Quantity` 依存を廃止し、`Reserve` / `Release` の不変条件を再定義）
   - [ ] InventoryRepository 契約を標準モデルへ更新する（戻り値/永続状態の検証軸を `on_hand` / `reserved` / `available` に変更）
@@ -552,6 +552,10 @@ OpenAPI生成クライアントを用いてUIから操作できる状態にす�
   - [ ] 仕様保留: 税/割引テーブル群（`tax_rates` / `coupons` / `promotions`）の要否と導入時期を確定する
   - [ ] 仕様保留: 履歴/監査テーブル（`order_status_history` またはイベントログ）の要否と導入時期を確定する
   - [ ] （要導入の場合）各テーブルの契約反映・migration・Redテスト先行・Green実装を追加タスク化して着手する
+- [ ] 保留目的: テストDBスキーマ準備を migration に一本化する（`ensureSchema` との二重管理を解消する）
+  - [ ] 実行方針保留: `backend/internal/infra/db` テストのスキーマ準備を migration 適用に統一し、`ensureSchema` を廃止する
+  - [ ] 進行制約保留: 進行中タスクへ差し込まず、区切りの良いタイミングで一括置換する（途中混在を作らない）
+  - [ ] 完了条件保留: `ensureSchema` 呼び出し 0 件、`go test ./internal/infra/db -count=1` が通過する
 
 ---
 

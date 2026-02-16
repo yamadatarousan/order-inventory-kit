@@ -49,7 +49,7 @@ func (r *memoryPaymentRepo) IsConfirmed(orderID, idempotencyKey string) bool {
 	return exists
 }
 
-func (r *memoryPaymentRepo) Confirm(orderID, idempotencyKey string) error {
+func (r *memoryPaymentRepo) Confirm(orderID, idempotencyKey string, _ int) error {
 	keys, ok := r.keys[orderID]
 	if !ok {
 		keys = make(map[string]struct{})

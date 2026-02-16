@@ -53,7 +53,7 @@ func (r *確定不変条件用PaymentRepo) IsConfirmed(orderID, idempotencyKey s
 	return exists
 }
 
-func (r *確定不変条件用PaymentRepo) Confirm(orderID, idempotencyKey string) error {
+func (r *確定不変条件用PaymentRepo) Confirm(orderID, idempotencyKey string, _ int) error {
 	perOrder, ok := r.keys[orderID]
 	if !ok {
 		perOrder = make(map[string]struct{})

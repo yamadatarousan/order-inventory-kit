@@ -1,6 +1,9 @@
 package db
 
-import "testing"
+import (
+	"database/sql"
+	"testing"
+)
 
 // このテストは PaymentRepository の確定判定仕様を固定する。
 // 仕様対象: Confirm 前後で IsConfirmed の結果が期待どおりに変化すること。
@@ -20,10 +23,23 @@ func TestPaymentRepository_確定と確認(t *testing.T) {
 	if ok := repo.IsConfirmed("order-1", "k-1"); ok {
 		t.Fatalf("expected false before confirm")
 	}
-	if err := repo.Confirm("order-1", "k-1"); err != nil {
+	if err := repo.Confirm("order-1", "k-1", 100); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	if ok := repo.IsConfirmed("order-1", "k-1"); !ok {
 		t.Fatalf("expected true after confirm")
+	}
+
+	var amount sql.NullInt64
+	if err := db.QueryRow(`
+		SELECT amount FROM payments WHERE order_id = $1 AND idempotency_key = $2
+	`, "order-1", "k-1").Scan(&amount); err != nil {
+		t.Fatalf("failed to load payment amount: %v", err)
+	}
+	if !amount.Valid {
+		t.Fatalf("expected payment amount to be set")
+	}
+	if amount.Int64 != 100 {
+		t.Fatalf("expected payment amount=100, got %d", amount.Int64)
 	}
 }

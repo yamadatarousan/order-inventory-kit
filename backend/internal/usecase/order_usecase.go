@@ -17,7 +17,7 @@ type OrderRepository interface {
 // PaymentRepository は決済の冪等性記録を抽象化する。
 type PaymentRepository interface {
 	IsConfirmed(orderID, idempotencyKey string) bool
-	Confirm(orderID, idempotencyKey string) error
+	Confirm(orderID, idempotencyKey string, amount int) error
 }
 
 // OrderUsecase は注文まわりのユースケースを提供する。
@@ -77,7 +77,7 @@ func (u *OrderUsecase) CancelOrder(id string) (domain.Order, error) {
 // ConfirmPaymentInput は決済確定の入力。
 type ConfirmPaymentInput struct {
 	OrderID string
-	// Amount は現状、入力妥当性（1以上）の検証用途のみ。金額計算や永続化には未接続。
+	// Amount は決済要求額（最小通貨単位）。
 	Amount         int
 	IdempotencyKey string
 }
@@ -107,7 +107,7 @@ func (u *OrderUsecase) ConfirmPayment(input ConfirmPaymentInput) (ConfirmPayment
 	if err := u.orders.Update(order); err != nil {
 		return ConfirmPaymentOutput{}, err
 	}
-	if err := u.payments.Confirm(input.OrderID, input.IdempotencyKey); err != nil {
+	if err := u.payments.Confirm(input.OrderID, input.IdempotencyKey, input.Amount); err != nil {
 		return ConfirmPaymentOutput{}, err
 	}
 	return ConfirmPaymentOutput{OrderID: input.OrderID, PaymentStatus: "confirmed"}, nil

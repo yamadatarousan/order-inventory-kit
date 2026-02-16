@@ -65,8 +65,15 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
 		  idempotency_key TEXT NOT NULL,
 		  status TEXT NOT NULL,
+		  amount INTEGER,
 		  PRIMARY KEY (order_id, idempotency_key)
 		);
+		ALTER TABLE payments
+		  ADD COLUMN IF NOT EXISTS amount INTEGER;
+		ALTER TABLE payments
+		  DROP CONSTRAINT IF EXISTS payments_amount_positive_or_null;
+		ALTER TABLE payments
+		  ADD CONSTRAINT payments_amount_positive_or_null CHECK (amount IS NULL OR amount >= 1);
 		CREATE TABLE IF NOT EXISTS product_prices (
 		  sku TEXT PRIMARY KEY,
 		  unit_price INTEGER NOT NULL CHECK (unit_price >= 0),
