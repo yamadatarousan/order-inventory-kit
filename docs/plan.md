@@ -308,7 +308,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 #### Phase 5 完了後に着手する拡張タスク（EC在庫・決済金額整合）
 - 決定参照: `ADR-0001` `docs/adr/0001-inventory-stock-model.md`（在庫モデル/状態遷移）
 - 決定参照: `ADR-0002` `docs/adr/0002-payment-amount-consistency.md`（`amount` 整合/`409` 分類）
-- [ ] 目的1: 仕様を確定する（契約定義を含む）
+- [x] 目的1: 仕様を確定する（契約定義を含む）
   - [x] 在庫モデル方針を標準モデルで固定する（`OnHand` / `Reserved` / `Available=OnHand-Reserved`）
   - [x] 標準モデルの用語定義を明記する（`OnHand=実在庫`、`Reserved=引当済み在庫`、`Available=販売可能在庫`）
   - [x] 在庫状態遷移を固定する（注文作成で `Reserve`、キャンセル/期限切れで `Release`、決済確定では在庫を減算しない）
