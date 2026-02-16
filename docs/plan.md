@@ -334,7 +334,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
   - [x] `docs/testing-roles.md` の網羅マトリクスと観測項目を標準モデルへ同期する
 
 - [ ] 目的3: Green（実装を追従させる）
-  - [ ] Green着手条件を満たす（目的1完了、目的2のRed失敗確認済み）
+  - [x] Green着手条件を満たす（目的1完了、目的2のRed失敗確認済み）
   - [ ] 在庫スキーマ移行を追加する（`inventory.quantity` から `inventory.on_hand` / `inventory.reserved` へ移行）
   - [ ] 既存データ移行方針を固定する（`on_hand=旧quantity`、`reserved=0` でバックフィル）
   - [ ] seed/init データを標準モデルへ更新する（`on_hand` / `reserved` を投入する）
