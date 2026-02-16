@@ -1,0 +1,27 @@
+id: 2026-02-16-price-model-breaking
+summary: "価格モデル導入に伴う契約変更（注文金額項目と決済409分類）の移行定義"
+breaking_changes:
+  - id: BC-001
+    description: "注文応答の金額項目（currency/totalAmount, items[].unitPrice/items[].lineAmount）を必須化する予定"
+    affected_endpoints:
+      - "POST /orders"
+      - "GET /orders/{orderId}"
+    mitigation:
+      - "クライアントのOrder型を更新し、金額項目を読み取れるようにする"
+      - "厳密スキーマ検証を行うクライアントは、必須化前に新項目を許容する設定へ変更する"
+  - id: BC-002
+    description: "POST /payments/confirm に 409（Amount conflict）を追加し、金額不一致/冪等異額再送を区別する"
+    affected_endpoints:
+      - "POST /payments/confirm"
+    mitigation:
+      - "決済確定APIの呼び出し側で 409 をハンドリングし、再計算/再送フローを追加する"
+      - "同一 idempotencyKey で異なる amount を送らないようにクライアント側の再送制御を見直す"
+deprecated_until: "2026-06-30"
+migration_steps:
+  - "Step 1: OpenAPI生成物を更新し、金額項目と409レスポンスを取り込む"
+  - "Step 2: クライアント実装で 409 ハンドリングと金額表示ロジックを追加する"
+  - "Step 3: 後方互換期間中に金額項目依存の画面/API連携を段階的に切り替える"
+  - "Step 4: 互換期限後に金額項目を必須化し、旧前提（金額項目なし）を廃止する"
+notes:
+  - "2026-02-16 時点では後方互換のため、追加した金額項目は optional のまま運用する"
+  - "破壊的変更の最終適用（required化）は、クライアント移行完了後に別PRで実施する"
