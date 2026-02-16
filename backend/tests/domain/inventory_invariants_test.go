@@ -76,6 +76,46 @@ func TestInventory_不変条件_確保成功でReservedのみ増えAvailableが�
 	}
 }
 
+func TestInventory_不変条件_確保数量が0以下は失敗し状態が変化しない(t *testing.T) {
+	inv, _ := domain.NewInventory("sku-1", 10, 3)
+	tests := []int{0, -1}
+	for _, q := range tests {
+		err := inv.Reserve(q)
+		if err == nil {
+			t.Fatalf("expected error on reserve(%d)", q)
+		}
+	}
+	if inv.OnHand != 10 {
+		t.Fatalf("expected onHand to remain 10, got %d", inv.OnHand)
+	}
+	if inv.Reserved != 3 {
+		t.Fatalf("expected reserved to remain 3, got %d", inv.Reserved)
+	}
+	if inv.Available() != 7 {
+		t.Fatalf("expected available to remain 7, got %d", inv.Available())
+	}
+}
+
+func TestInventory_不変条件_戻し数量が0以下は失敗し状態が変化しない(t *testing.T) {
+	inv, _ := domain.NewInventory("sku-1", 10, 3)
+	tests := []int{0, -1}
+	for _, q := range tests {
+		err := inv.Release(q)
+		if err == nil {
+			t.Fatalf("expected error on release(%d)", q)
+		}
+	}
+	if inv.OnHand != 10 {
+		t.Fatalf("expected onHand to remain 10, got %d", inv.OnHand)
+	}
+	if inv.Reserved != 3 {
+		t.Fatalf("expected reserved to remain 3, got %d", inv.Reserved)
+	}
+	if inv.Available() != 7 {
+		t.Fatalf("expected available to remain 7, got %d", inv.Available())
+	}
+}
+
 func TestInventory_不変条件_戻し成功でReservedのみ減りAvailableが増える(t *testing.T) {
 	inv, _ := domain.NewInventory("sku-1", 10, 3)
 	if err := inv.Release(2); err != nil {
