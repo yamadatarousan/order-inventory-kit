@@ -323,7 +323,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 
 - [ ] 目的2: Red（仕様テストを先に作成する）
   - [x] 不変条件テストを標準モデルへ更新する（負数禁止、過剰確保失敗、戻し時整合）
-  - [ ] 不変条件テストに在庫標準モデルの成功時整合を追加する（`Reserve` 成功で `reserved` 増/`available` 減、`Release` 成功で `reserved` 減/`available` 増、`on_hand` 不変）
+  - [x] 不変条件テストに在庫標準モデルの成功時整合を追加する（`Reserve` 成功で `reserved` 増/`available` 減、`Release` 成功で `reserved` 減/`available` 増、`on_hand` 不変）
   - [ ] 不変条件テストに在庫操作の入力境界を追加する（`Reserve`/`Release` の `quantity<=0` は失敗）
   - [ ] 不変条件テストに戻し境界を追加する（`Release` で `reserved` を下回る戻しは失敗）
   - [ ] 不変条件テストで在庫恒等式を固定する（各操作後に `available = on_hand - reserved` を検証する）

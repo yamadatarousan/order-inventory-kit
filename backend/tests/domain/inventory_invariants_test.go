@@ -60,6 +60,22 @@ func TestInventory_不変条件_戻し時整合_確保超過の戻しは禁止(t
 	}
 }
 
+func TestInventory_不変条件_確保成功でReservedのみ増えAvailableが減る(t *testing.T) {
+	inv, _ := domain.NewInventory("sku-1", 10, 3)
+	if err := inv.Reserve(2); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if inv.OnHand != 10 {
+		t.Fatalf("expected onHand to remain 10, got %d", inv.OnHand)
+	}
+	if inv.Reserved != 5 {
+		t.Fatalf("expected reserved 5, got %d", inv.Reserved)
+	}
+	if inv.Available() != 5 {
+		t.Fatalf("expected available 5, got %d", inv.Available())
+	}
+}
+
 func TestInventory_不変条件_戻し成功でReservedのみ減りAvailableが増える(t *testing.T) {
 	inv, _ := domain.NewInventory("sku-1", 10, 3)
 	if err := inv.Release(2); err != nil {
