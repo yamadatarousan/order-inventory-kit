@@ -19,9 +19,13 @@
   - 決済確定: 在庫を減算しない
   - 出荷確定: `OnHand` を減算し、対応する `Reserved` を減算する
 - 出荷未実装期間は `OnHand` を変更しない
+- 既存データ移行は次で固定する
+  - `on_hand = 旧 quantity`
+  - `reserved = 0`
 
 ## Consequences
 - DBは `inventory.quantity` 依存を廃止し、`inventory.on_hand` / `inventory.reserved` を導入する
+- 既存 `inventory` レコードは `on_hand=旧quantity` / `reserved=0` でバックフィルする
 - Repository/Domainの契約は `Reserve` / `Release` と `on_hand/reserved/available` 観測へ更新する
 - 不変条件テストと境界一貫性統合テストの期待値を標準モデルへ更新する
 
