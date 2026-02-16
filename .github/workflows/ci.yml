@@ -48,6 +48,11 @@ jobs:
             psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
           done
 
+      - name: Migration comments check
+        # 新規/変更テーブル・カラムのDBコメントを必須化する。
+        # CREATE TABLE / ALTER TABLE ADD COLUMN に対応する COMMENT ON が無い変更を落とす。
+        run: ./tools/db/check_migration_comments.sh
+
       - name: OpenAPI diff
         # 境界（契約）の差分検査
         # 破壊的変更があれば移行定義の追加が必須になる想定

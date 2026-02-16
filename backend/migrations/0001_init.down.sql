@@ -1,3 +1,4 @@
+-- 初期スキーマを逆順で削除する。
 DROP TABLE IF EXISTS inventory;
 DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS order_items;

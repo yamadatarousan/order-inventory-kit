@@ -45,6 +45,7 @@
 - OpenAPI差分で破壊的変更を検出したら移行定義が必須
 - 生成整合が崩れた変更は統合しない
 - 構造検査に違反した変更は統合しない
+- DBマイグレーションで新規/変更したテーブル・カラムにコメントが無い変更は統合しない（CI検査）
 - ドメイン不変条件テストを通過したものだけ統合
 - 境界観測一貫性テストを通過したものだけ統合
 - 仕様テストが先に存在し、失敗から修正されていること
@@ -117,6 +118,7 @@
 - [x] CIで差分→生成→構造→不変条件→境界観測一貫性の通し順を確認（上記ツール前提）
 - [x] 構造検査ルールの配置と運用方法を確定（`tools/arch/README.md` / `backend/.golangci.yml` / `frontend/eslint.config.cjs`）
 - [x] OpenAPIチェックの配置と運用方法を確定（`tools/openapi/README.md` / `tools/openapi/*.sh`）
+- [x] DBマイグレーションのコメント検査をCIに追加（`tools/db/check_migration_comments.sh` / `.github/workflows/ci.yml`）
 
 #### 成果物
 - `contracts/openapi.yaml`
@@ -335,7 +337,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 
 - [ ] 目的3: Green（実装を追従させる）
   - [x] Green着手条件を満たす（目的1完了、目的2のRed失敗確認済み）
-  - [ ] 在庫スキーマ移行を追加する（`inventory.quantity` から `inventory.on_hand` / `inventory.reserved` へ移行）
+  - [x] 在庫スキーマ移行を追加する（`inventory.quantity` から `inventory.on_hand` / `inventory.reserved` へ移行）
   - [ ] 既存データ移行方針を固定する（`on_hand=旧quantity`、`reserved=0` でバックフィル）
   - [ ] seed/init データを標準モデルへ更新する（`on_hand` / `reserved` を投入する）
   - [ ] 価格モデルを導入する（価格情報と `order_items.unit_price` を追加し、注文時に価格スナップショットを保存する）
@@ -508,6 +510,7 @@ OpenAPI生成クライアントを用いてUIから操作できる状態にす�
 - 破壊的変更が移行定義に従属している
 - 生成整合が崩れたらCIが落ちる
 - 依存方向・越境の違反がCIで落ちる
+- DBマイグレーションで新規/変更したテーブル・カラムにコメントが無いとCIで落ちる
 - 不変条件/境界観測一貫性の違反がCIで落ちる
 
 ---
