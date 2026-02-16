@@ -576,6 +576,59 @@ func TestIntegration_OrderBoundary_POST_payments_confirm_404_未存在orderId(t 
 	}
 }
 
+// このテストは POST /payments/confirm の金額一致時200を統合境界で固定する。
+// 仕様対象: amount が注文合計と一致する場合は 200 で確定し、後続参照は confirmed を返す。
+// 根拠: 金額整合の正常系を境界で固定するため。
+func TestIntegration_OrderBoundary_POST_payments_confirm_200_金額一致(t *testing.T) {
+	kit := new境界統合Testkit(t)
+	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	beforeConfirmInventory := inventoryStateBySKU(t, kit, "sku-1")
+
+	// 観測1/2: confirmPaymentIntegration が HTTP 200 と主要項目を検証する。
+	res := confirmPaymentIntegration(t, kit, createRes.OrderID, 100, "k-200")
+	if res.PaymentStatus != "confirmed" {
+		t.Fatalf("[P5-PAY-200-02] expected paymentStatus=confirmed, got %s", res.PaymentStatus)
+	}
+	// 観測3: 後続API状態として confirmed へ遷移していることを検証する。
+	order := getOrderIntegration(t, kit, createRes.OrderID)
+	if order.Status != "confirmed" {
+		t.Fatalf("[P5-PAY-200-02] expected confirmed, got %s", order.Status)
+	}
+	// 観測4: 副作用DBとして決済件数更新と在庫不変を検証する。
+	if payments := paymentsCountByOrder(t, kit, createRes.OrderID); payments != 1 {
+		t.Fatalf("[P5-PAY-200-02] expected payments=1, got %d", payments)
+	}
+	afterConfirmInventory := inventoryStateBySKU(t, kit, "sku-1")
+	assertInventoryUnchanged(t, "P5-PAY-200-02 after confirm", beforeConfirmInventory, afterConfirmInventory)
+}
+
+// このテストは POST /payments/confirm の 409（金額不一致）を統合境界で固定する。
+// 仕様対象: amount が注文合計と不一致のとき 409 を返し、注文状態とDB副作用を変化させない。
+// 根拠: 金額不一致を 400/404 ではなく 409 で区別するため。
+func TestIntegration_OrderBoundary_POST_payments_confirm_409_金額不一致(t *testing.T) {
+	kit := new境界統合Testkit(t)
+	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	before := snapshot境界統合副作用(t, kit)
+
+	payload, _ := json.Marshal(map[string]any{
+		"orderId":        createRes.OrderID,
+		"amount":         101,
+		"idempotencyKey": "k-409-mismatch",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/payments/confirm", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	// 観測1/2/4: 409分類・エラー主要項目・副作用なしを共通helperで検証する。
+	assert409NoSideEffect(t, "P5-PAY-409-01", w, before, snapshot境界統合副作用(t, kit))
+	// 観測3: 後続API状態として注文状態が accepted のまま維持されることを検証する。
+	order := getOrderIntegration(t, kit, createRes.OrderID)
+	if order.Status != "accepted" {
+		t.Fatalf("[P5-PAY-409-01] expected accepted after amount mismatch, got %s", order.Status)
+	}
+}
+
 // このテストは POST /payments/confirm の冪等性（同一キー再送）を統合境界で固定する。
 func TestIntegration_OrderBoundary_POST_payments_confirm_冪等_同一キー再送(t *testing.T) {
 	kit := new境界統合Testkit(t)
@@ -598,6 +651,34 @@ func TestIntegration_OrderBoundary_POST_payments_confirm_冪等_同一キー再�
 	order := getOrderIntegration(t, kit, createRes.OrderID)
 	if order.Status != "confirmed" {
 		t.Fatalf("[P5-PAY-IDEMP-01] expected confirmed, got %s", order.Status)
+	}
+}
+
+// このテストは POST /payments/confirm の冪等異額再送を統合境界で固定する。
+// 仕様対象: 同一 idempotencyKey を異なる amount で再送した場合は 409 を返し、副作用を増やさない。
+// 根拠: 冪等再送時の同額/異額の分類を固定するため。
+func TestIntegration_OrderBoundary_POST_payments_confirm_冪等_異額再送は409(t *testing.T) {
+	kit := new境界統合Testkit(t)
+	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	_ = confirmPaymentIntegration(t, kit, createRes.OrderID, 100, "k-same-key")
+	beforeSecond := snapshot境界統合副作用(t, kit)
+
+	payload, _ := json.Marshal(map[string]any{
+		"orderId":        createRes.OrderID,
+		"amount":         101,
+		"idempotencyKey": "k-same-key",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/payments/confirm", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	// 観測1/2/4: 409分類・エラー主要項目・副作用なしを共通helperで検証する。
+	assert409NoSideEffect(t, "P5-PAY-IDEMP-02", w, beforeSecond, snapshot境界統合副作用(t, kit))
+	// 観測3: 後続API状態として confirmed が維持されることを検証する。
+	order := getOrderIntegration(t, kit, createRes.OrderID)
+	if order.Status != "confirmed" {
+		t.Fatalf("[P5-PAY-IDEMP-02] expected confirmed, got %s", order.Status)
 	}
 }
 
@@ -705,6 +786,28 @@ func assert400NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseReco
 	}
 	if body.Message != "invalid request" {
 		t.Fatalf("[%s] expected message=invalid request, got %s", caseID, body.Message)
+	}
+	if before != after {
+		t.Fatalf("[%s] expected no db side effects, before=%+v after=%+v", caseID, before, after)
+	}
+}
+
+// assert409NoSideEffect は 409エラー時の共通契約を検証する。
+// amount conflict の返却と、副作用DBスナップショット不変を固定する。
+func assert409NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseRecorder, before, after 境界統合DB副作用スナップショット) {
+	t.Helper()
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("[%s] expected 409, got %d body=%s", caseID, w.Code, strings.TrimSpace(w.Body.String()))
+	}
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("[%s] failed to decode conflict response: %v", caseID, err)
+	}
+	if body.Message != "amount conflict" {
+		t.Fatalf("[%s] expected message=amount conflict, got %s", caseID, body.Message)
 	}
 	if before != after {
 		t.Fatalf("[%s] expected no db side effects, before=%+v after=%+v", caseID, before, after)
