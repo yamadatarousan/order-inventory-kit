@@ -13,7 +13,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create order (reserve inventory) */
+        /**
+         * Create order (reserve inventory)
+         * @description 価格モデル前提:
+         *     - リクエストに単価は含めない
+         *     - `unitPrice` / `lineAmount` / `totalAmount` はサーバ算出値を返す
+         */
         post: operations["createOrder"];
         delete?: never;
         options?: never;
@@ -83,6 +88,13 @@ export interface components {
         CreateOrderResponse: {
             orderId: string;
             status: components["schemas"]["OrderStatus"];
+            /**
+             * @description 金額表示通貨（単一通貨）
+             * @enum {string}
+             */
+            currency?: "JPY";
+            /** @description 注文合計金額（サーバ算出、最小通貨単位） */
+            totalAmount?: number;
         };
         ConfirmPaymentRequest: {
             orderId: string;
@@ -99,10 +111,21 @@ export interface components {
             customerId: string;
             status: components["schemas"]["OrderStatus"];
             items: components["schemas"]["OrderItem"][];
+            /**
+             * @description 金額表示通貨（単一通貨）
+             * @enum {string}
+             */
+            currency?: "JPY";
+            /** @description 注文合計金額（サーバ算出、最小通貨単位） */
+            totalAmount?: number;
         };
         OrderItem: {
             sku: string;
             quantity: number;
+            /** @description 商品単価（サーバ側価格情報を決定元に設定） */
+            unitPrice?: number;
+            /** @description 明細金額（unitPrice * quantity） */
+            lineAmount?: number;
         };
         /** @enum {string} */
         OrderStatus: "accepted" | "confirmed" | "canceled";

@@ -16,6 +16,16 @@ const (
 	ConfirmPaymentResponsePaymentStatusConfirmed ConfirmPaymentResponsePaymentStatus = "confirmed"
 )
 
+// Defines values for CreateOrderResponseCurrency.
+const (
+	CreateOrderResponseCurrencyJPY CreateOrderResponseCurrency = "JPY"
+)
+
+// Defines values for OrderCurrency.
+const (
+	OrderCurrencyJPY OrderCurrency = "JPY"
+)
+
 // Defines values for OrderStatus.
 const (
 	OrderStatusAccepted  OrderStatus = "accepted"
@@ -47,9 +57,17 @@ type CreateOrderRequest struct {
 
 // CreateOrderResponse defines model for CreateOrderResponse.
 type CreateOrderResponse struct {
-	OrderId string      `json:"orderId"`
-	Status  OrderStatus `json:"status"`
+	// Currency 金額表示通貨（単一通貨）
+	Currency *CreateOrderResponseCurrency `json:"currency,omitempty"`
+	OrderId  string                       `json:"orderId"`
+	Status   OrderStatus                  `json:"status"`
+
+	// TotalAmount 注文合計金額（サーバ算出、最小通貨単位）
+	TotalAmount *int `json:"totalAmount,omitempty"`
 }
+
+// CreateOrderResponseCurrency 金額表示通貨（単一通貨）
+type CreateOrderResponseCurrency string
 
 // Error defines model for Error.
 type Error struct {
@@ -58,16 +76,29 @@ type Error struct {
 
 // Order defines model for Order.
 type Order struct {
-	CustomerId string      `json:"customerId"`
-	Id         string      `json:"id"`
-	Items      []OrderItem `json:"items"`
-	Status     OrderStatus `json:"status"`
+	// Currency 金額表示通貨（単一通貨）
+	Currency   *OrderCurrency `json:"currency,omitempty"`
+	CustomerId string         `json:"customerId"`
+	Id         string         `json:"id"`
+	Items      []OrderItem    `json:"items"`
+	Status     OrderStatus    `json:"status"`
+
+	// TotalAmount 注文合計金額（サーバ算出、最小通貨単位）
+	TotalAmount *int `json:"totalAmount,omitempty"`
 }
+
+// OrderCurrency 金額表示通貨（単一通貨）
+type OrderCurrency string
 
 // OrderItem defines model for OrderItem.
 type OrderItem struct {
-	Quantity int    `json:"quantity"`
-	Sku      string `json:"sku"`
+	// LineAmount 明細金額（unitPrice * quantity）
+	LineAmount *int   `json:"lineAmount,omitempty"`
+	Quantity   int    `json:"quantity"`
+	Sku        string `json:"sku"`
+
+	// UnitPrice 商品単価（サーバ側価格情報を決定元に設定）
+	UnitPrice *int `json:"unitPrice,omitempty"`
 }
 
 // OrderStatus defines model for OrderStatus.

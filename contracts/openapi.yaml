@@ -10,6 +10,8 @@ info:
     注文作成で Reserved を増加（Reserve）、キャンセルで Reserved を減少（Release）する。
     決済確定では在庫を減算しない（OnHand / Reserved は不変）。
     出荷機能は本契約の対象外であり、出荷確定での OnHand 減算は未導入。
+    価格モデルはサーバ側価格情報を決定元とし、クライアント入力価格は採用しない。
+    注文金額はサーバ側で算出し、注文応答に金額項目として返却する。
 servers:
   - url: http://localhost:8080
 paths:
@@ -17,6 +19,10 @@ paths:
     post:
       summary: Create order (reserve inventory)
       operationId: createOrder
+      description: |
+        価格モデル前提:
+        - リクエストに単価は含めない
+        - `unitPrice` / `lineAmount` / `totalAmount` はサーバ算出値を返す
       requestBody:
         required: true
         content:
@@ -31,6 +37,8 @@ paths:
           # 在庫前提:
           # - 注文作成時に Reserve を実行し、Reserved を増加させる
           # - OnHand は変更しない
+          # 価格前提:
+          # - 応答の金額項目はサーバ算出値を返す
           content:
             application/json:
               schema:
@@ -151,6 +159,15 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/OrderStatus'
+        currency:
+          type: string
+          enum:
+            - JPY
+          description: 金額表示通貨（単一通貨）
+        totalAmount:
+          type: integer
+          minimum: 0
+          description: 注文合計金額（サーバ算出、最小通貨単位）
     ConfirmPaymentRequest:
       type: object
       required:
@@ -194,6 +211,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OrderItem'
+        currency:
+          type: string
+          enum:
+            - JPY
+          description: 金額表示通貨（単一通貨）
+        totalAmount:
+          type: integer
+          minimum: 0
+          description: 注文合計金額（サーバ算出、最小通貨単位）
     OrderItem:
       type: object
       required:
@@ -205,6 +231,14 @@ components:
         quantity:
           type: integer
           minimum: 1
+        unitPrice:
+          type: integer
+          minimum: 0
+          description: 商品単価（サーバ側価格情報を決定元に設定）
+        lineAmount:
+          type: integer
+          minimum: 0
+          description: 明細金額（unitPrice * quantity）
     OrderStatus:
       type: string
       enum:
