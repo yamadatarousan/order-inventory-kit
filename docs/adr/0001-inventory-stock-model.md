@@ -18,6 +18,10 @@
   - キャンセル/期限切れ: `Release`（`Reserved` を減らす）
   - 決済確定: 在庫を減算しない
   - 出荷確定: `OnHand` を減算し、対応する `Reserved` を減算する
+- キャンセル時の戻し条件は次で固定する
+  - `accepted`: キャンセル可（`Release` 実行）
+  - `confirmed`: キャンセル可（`Release` 実行）
+  - `canceled`: キャンセル不可（失敗として扱い、`Release` を実行しない）
 - 出荷未実装期間は `OnHand` を変更しない
 - 注文作成と在庫引当の整合は「補償処理」を採用する
   - 方針: `CreateOrder` では `Reserve` を先に実行し、その後 `orders.Create` を実行する

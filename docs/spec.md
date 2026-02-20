@@ -87,6 +87,7 @@
 - そのため現在の開発スコープに出荷機能（出荷確定API/UseCase/永続化）は含めない
 - 注文作成時は `Reserve` を実行し、`Reserved` を増やす
 - キャンセル/期限切れ時は `Release` を実行し、`Reserved` を減らす
+- キャンセル可否は `accepted/confirmed` のみ許可し、`canceled` は失敗とする（`Release` しない）
 - 決済確定時は在庫を減算しない（`OnHand` / `Reserved` を変更しない）
 - 引当追跡は専用台帳（`inventory_reservations`）を導入し、注文明細単位で追跡する
 - 出荷機能が未実装の期間は、`出荷確定` を起点とする在庫更新を実行しない

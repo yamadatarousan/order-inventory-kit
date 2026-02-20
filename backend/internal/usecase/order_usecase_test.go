@@ -356,6 +356,33 @@ func TestCancelOrder_存在しない場合(t *testing.T) {
 	}
 }
 
+func TestCancelOrder_不変条件_既にcanceledの注文は失敗し在庫副作用が増えない(t *testing.T) {
+	orders := newMemoryOrderRepo()
+	payments := newMemoryPaymentRepo()
+	inventories := newMemoryOrderInventoryRepo()
+	seedInventory(t, inventories, "sku-1", 10, 0)
+	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
+
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
+	order.Status = domain.OrderStatusCanceled
+	_ = orders.Create(order)
+
+	_, err := uc.CancelOrder("order-1")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if orders.updateCalls != 0 {
+		t.Fatalf("order update side effect must not increase, got %d", orders.updateCalls)
+	}
+	if inventories.releaseCalls != 0 {
+		t.Fatalf("inventory release side effect must not increase, got %d", inventories.releaseCalls)
+	}
+	savedInv := inventories.items["sku-1"]
+	if savedInv.OnHand != 10 || savedInv.Reserved != 0 || savedInv.Available() != 10 {
+		t.Fatalf("inventory must remain unchanged, got (%d,%d,%d)", savedInv.OnHand, savedInv.Reserved, savedInv.Available())
+	}
+}
+
 func TestConfirmPayment_正常系(t *testing.T) {
 	orders := newMemoryOrderRepo()
 	payments := newMemoryPaymentRepo()

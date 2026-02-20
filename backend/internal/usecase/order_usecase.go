@@ -102,6 +102,9 @@ func (u *OrderUsecase) CancelOrder(id string) (domain.Order, error) {
 	if !ok {
 		return domain.Order{}, errors.New("not found")
 	}
+	if order.Status == domain.OrderStatusCanceled {
+		return domain.Order{}, errors.New("already canceled")
+	}
 
 	releasedItems := make([]domain.OrderItem, 0, len(order.Items))
 	for _, item := range order.Items {
