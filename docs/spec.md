@@ -88,6 +88,9 @@
 - 注文作成時は `Reserve` を実行し、`Reserved` を増やす
 - キャンセル/期限切れ時は `Release` を実行し、`Reserved` を減らす
 - キャンセル可否は `accepted/confirmed` のみ許可し、`canceled` は失敗とする（`Release` しない）
+- 期限切れは `accepted` のみ対象とする（`confirmed` / `canceled` は対象外）
+- 期限は `created_at + 30分` で定義し、1分間隔バッチで判定する
+- 期限切れ時の `Release` は `inventory_reservations` を基準に実行し、処理後に注文状態を `canceled` に更新する
 - 決済確定時は在庫を減算しない（`OnHand` / `Reserved` を変更しない）
 - 引当追跡は専用台帳（`inventory_reservations`）を導入し、注文明細単位で追跡する
 - 出荷機能が未実装の期間は、`出荷確定` を起点とする在庫更新を実行しない

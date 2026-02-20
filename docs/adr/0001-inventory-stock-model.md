@@ -22,6 +22,13 @@
   - `accepted`: キャンセル可（`Release` 実行）
   - `confirmed`: キャンセル可（`Release` 実行）
   - `canceled`: キャンセル不可（失敗として扱い、`Release` を実行しない）
+- 期限切れ時の戻し条件は次で固定する
+  - 対象状態: `accepted` のみ（`confirmed` / `canceled` は期限切れ戻し対象外）
+  - 期限定義: `created_at + 30分` を超過した注文を期限切れとみなす
+  - 判定タイミング: 1分間隔のバッチ実行で期限切れ判定を行う
+  - `Release` 実行方式:
+    - `inventory_reservations` の行を基準に SKU/数量を取得し、同数量を `inventory.reserved` から減算する
+    - 期限切れ処理後は対象注文を `canceled` に更新し、対応する `inventory_reservations` 行を削除する
 - 出荷未実装期間は `OnHand` を変更しない
 - 注文作成と在庫引当の整合は「補償処理」を採用する
   - 方針: `CreateOrder` では `Reserve` を先に実行し、その後 `orders.Create` を実行する

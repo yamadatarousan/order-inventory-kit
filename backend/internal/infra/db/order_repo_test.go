@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"testing"
+	"time"
 
 	"order-inventory-kit/internal/domain"
 )
@@ -205,5 +206,185 @@ func TestOrderRepository_価格情報が存在しないSKUを含む注文は失�
 	}
 	if reservationCount != 0 {
 		t.Fatalf("reservation rows must not be persisted on failure, got %d", reservationCount)
+	}
+}
+
+func TestOrderRepository_期限切れ_acceptedは引当を戻してcanceledに更新する(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ensureSchema(t, db)
+	resetTables(t, db)
+
+	repo := NewOrderRepository(db)
+	if _, err := db.Exec(`
+		INSERT INTO inventory (sku, quantity, on_hand, reserved)
+		VALUES ('sku-1', 100, 100, 0)
+	`); err != nil {
+		t.Fatalf("failed to seed inventory row: %v", err)
+	}
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
+	if err := repo.Create(order); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if _, err := db.Exec(`
+		UPDATE inventory
+		SET reserved = 2, quantity = on_hand - 2
+		WHERE sku = 'sku-1'
+	`); err != nil {
+		t.Fatalf("failed to seed reserved inventory: %v", err)
+	}
+	if _, err := db.Exec(`
+		UPDATE orders
+		SET created_at = NOW() - INTERVAL '31 minutes'
+		WHERE id = 'order-1'
+	`); err != nil {
+		t.Fatalf("failed to make order expired: %v", err)
+	}
+
+	expiredCount, err := repo.ExpireAcceptedOrders(time.Now().Add(-30 * time.Minute))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if expiredCount != 1 {
+		t.Fatalf("expected 1 expired order, got %d", expiredCount)
+	}
+
+	var status string
+	if err := db.QueryRow(`SELECT status FROM orders WHERE id = $1`, "order-1").Scan(&status); err != nil {
+		t.Fatalf("failed to load status: %v", err)
+	}
+	if status != string(domain.OrderStatusCanceled) {
+		t.Fatalf("expected canceled, got %s", status)
+	}
+
+	var reservationCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM inventory_reservations WHERE order_id = $1`, "order-1").Scan(&reservationCount); err != nil {
+		t.Fatalf("failed to count reservations: %v", err)
+	}
+	if reservationCount != 0 {
+		t.Fatalf("expected no reservations after expiration, got %d", reservationCount)
+	}
+
+	var reserved int
+	if err := db.QueryRow(`SELECT reserved FROM inventory WHERE sku = $1`, "sku-1").Scan(&reserved); err != nil {
+		t.Fatalf("failed to load inventory reserved: %v", err)
+	}
+	if reserved != 0 {
+		t.Fatalf("expected reserved to be released to 0, got %d", reserved)
+	}
+}
+
+func TestOrderRepository_期限切れ_confirmedは対象外で変更しない(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ensureSchema(t, db)
+	resetTables(t, db)
+
+	repo := NewOrderRepository(db)
+	if _, err := db.Exec(`
+		INSERT INTO inventory (sku, quantity, on_hand, reserved)
+		VALUES ('sku-1', 100, 100, 0)
+	`); err != nil {
+		t.Fatalf("failed to seed inventory row: %v", err)
+	}
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
+	if err := repo.Create(order); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if _, err := db.Exec(`
+		UPDATE orders
+		SET status = $1, created_at = NOW() - INTERVAL '31 minutes'
+		WHERE id = $2
+	`, domain.OrderStatusConfirmed, "order-1"); err != nil {
+		t.Fatalf("failed to set confirmed order: %v", err)
+	}
+	if _, err := db.Exec(`
+		UPDATE inventory
+		SET reserved = 2, quantity = on_hand - 2
+		WHERE sku = 'sku-1'
+	`); err != nil {
+		t.Fatalf("failed to seed reserved inventory: %v", err)
+	}
+
+	expiredCount, err := repo.ExpireAcceptedOrders(time.Now().Add(-30 * time.Minute))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if expiredCount != 0 {
+		t.Fatalf("expected 0 expired orders, got %d", expiredCount)
+	}
+
+	var status string
+	if err := db.QueryRow(`SELECT status FROM orders WHERE id = $1`, "order-1").Scan(&status); err != nil {
+		t.Fatalf("failed to load status: %v", err)
+	}
+	if status != string(domain.OrderStatusConfirmed) {
+		t.Fatalf("expected confirmed to remain unchanged, got %s", status)
+	}
+
+	var reservationCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM inventory_reservations WHERE order_id = $1`, "order-1").Scan(&reservationCount); err != nil {
+		t.Fatalf("failed to count reservations: %v", err)
+	}
+	if reservationCount != 1 {
+		t.Fatalf("expected reservation rows to remain 1, got %d", reservationCount)
+	}
+}
+
+func TestOrderRepository_期限切れ_期限未到達は対象外で変更しない(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ensureSchema(t, db)
+	resetTables(t, db)
+
+	repo := NewOrderRepository(db)
+	if _, err := db.Exec(`
+		INSERT INTO inventory (sku, quantity, on_hand, reserved)
+		VALUES ('sku-1', 100, 100, 0)
+	`); err != nil {
+		t.Fatalf("failed to seed inventory row: %v", err)
+	}
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
+	if err := repo.Create(order); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if _, err := db.Exec(`
+		UPDATE orders
+		SET created_at = NOW() - INTERVAL '10 minutes'
+		WHERE id = $1
+	`, "order-1"); err != nil {
+		t.Fatalf("failed to set order age: %v", err)
+	}
+	if _, err := db.Exec(`
+		UPDATE inventory
+		SET reserved = 2, quantity = on_hand - 2
+		WHERE sku = 'sku-1'
+	`); err != nil {
+		t.Fatalf("failed to seed reserved inventory: %v", err)
+	}
+
+	expiredCount, err := repo.ExpireAcceptedOrders(time.Now().Add(-30 * time.Minute))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if expiredCount != 0 {
+		t.Fatalf("expected 0 expired orders, got %d", expiredCount)
+	}
+
+	var status string
+	if err := db.QueryRow(`SELECT status FROM orders WHERE id = $1`, "order-1").Scan(&status); err != nil {
+		t.Fatalf("failed to load status: %v", err)
+	}
+	if status != string(domain.OrderStatusAccepted) {
+		t.Fatalf("expected accepted to remain unchanged, got %s", status)
+	}
+
+	var reservationCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM inventory_reservations WHERE order_id = $1`, "order-1").Scan(&reservationCount); err != nil {
+		t.Fatalf("failed to count reservations: %v", err)
+	}
+	if reservationCount != 1 {
+		t.Fatalf("expected reservation rows to remain 1, got %d", reservationCount)
 	}
 }

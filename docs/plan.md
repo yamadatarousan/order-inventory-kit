@@ -351,7 +351,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
   - [x] 在庫引当の追跡方式を確定する（`inventory_reservations` テーブルの要否を判定する）
   - [x] `inventory_reservations` テーブルを追加し、引当/戻しの参照整合を実装する（migration/seed/参照制約）
   - [x] キャンセル時の戻し条件を固定する（`accepted` / `confirmed` など注文状態ごとの `Release` 実行可否を明記）
-  - [ ] 期限切れ時の戻し方針を固定する（期限の定義、判定タイミング、`Release` 実行方式）
+  - [x] 期限切れ時の戻し方針を固定する（期限の定義、判定タイミング、`Release` 実行方式）
   - [ ] `POST /payments/confirm` で金額照合を実装する（`amount != サーバ算出の注文合計` は `409`）
   - [ ] 同一 `idempotencyKey` の再送は同額のみ成功とし、異額は `409` で失敗させる
   - [ ] OpenAPI 生成物を再生成して整合させる（Go/TS）

@@ -5,6 +5,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"time"
 
 	"order-inventory-kit/internal/domain"
 )
@@ -133,4 +135,117 @@ func (r *OrderRepository) Update(order domain.Order) error {
 	}
 	committed = true
 	return nil
+}
+
+// ExpireAcceptedOrders は期限切れの accepted 注文を canceled に更新し、引当を戻す。
+// 期限判定は created_at < cutoff を使う。
+func (r *OrderRepository) ExpireAcceptedOrders(cutoff time.Time) (int, error) {
+	tx, err := r.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	rows, err := tx.Query(`
+		SELECT id
+		FROM orders
+		WHERE status = $1 AND created_at < $2
+		ORDER BY id
+	`, domain.OrderStatusAccepted, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("query expired orders: %w", err)
+	}
+	defer rows.Close()
+
+	var orderIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return 0, fmt.Errorf("scan expired order id: %w", err)
+		}
+		orderIDs = append(orderIDs, id)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("iterate expired order ids: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return 0, fmt.Errorf("close expired order rows: %w", err)
+	}
+
+	expiredCount := 0
+	for _, orderID := range orderIDs {
+		type reservation struct {
+			sku      string
+			quantity int
+		}
+
+		reservationRows, err := tx.Query(`
+			SELECT sku, quantity
+			FROM inventory_reservations
+			WHERE order_id = $1
+			ORDER BY sku
+		`, orderID)
+		if err != nil {
+			return expiredCount, fmt.Errorf("query reservations order=%s: %w", orderID, err)
+		}
+
+		var reservations []reservation
+		for reservationRows.Next() {
+			var r reservation
+			if err := reservationRows.Scan(&r.sku, &r.quantity); err != nil {
+				_ = reservationRows.Close()
+				return expiredCount, fmt.Errorf("scan reservation row order=%s: %w", orderID, err)
+			}
+			reservations = append(reservations, r)
+		}
+		if err := reservationRows.Err(); err != nil {
+			_ = reservationRows.Close()
+			return expiredCount, fmt.Errorf("iterate reservations order=%s: %w", orderID, err)
+		}
+		if err := reservationRows.Close(); err != nil {
+			return expiredCount, fmt.Errorf("close reservations order=%s: %w", orderID, err)
+		}
+
+		if len(reservations) == 0 {
+			return expiredCount, fmt.Errorf("reservation not found for expired order: %s", orderID)
+		}
+		for _, r := range reservations {
+			result, err := tx.Exec(`
+				UPDATE inventory
+				SET
+				  reserved = reserved - $2,
+				  quantity = on_hand - (reserved - $2)
+				WHERE sku = $1 AND reserved >= $2
+			`, r.sku, r.quantity)
+			if err != nil {
+				return expiredCount, fmt.Errorf("update inventory release order=%s sku=%s: %w", orderID, r.sku, err)
+			}
+			affected, err := result.RowsAffected()
+			if err != nil {
+				return expiredCount, fmt.Errorf("rows affected inventory release order=%s sku=%s: %w", orderID, r.sku, err)
+			}
+			if affected != 1 {
+				return expiredCount, fmt.Errorf("inventory release failed for sku=%s quantity=%d", r.sku, r.quantity)
+			}
+		}
+
+		if _, err := tx.Exec(`DELETE FROM inventory_reservations WHERE order_id = $1`, orderID); err != nil {
+			return expiredCount, fmt.Errorf("delete reservations order=%s: %w", orderID, err)
+		}
+		if _, err := tx.Exec(`UPDATE orders SET status = $1 WHERE id = $2`, domain.OrderStatusCanceled, orderID); err != nil {
+			return expiredCount, fmt.Errorf("update order canceled order=%s: %w", orderID, err)
+		}
+		expiredCount++
+	}
+
+	if err := tx.Commit(); err != nil {
+		return expiredCount, fmt.Errorf("commit expiration tx: %w", err)
+	}
+	committed = true
+	return expiredCount, nil
 }
