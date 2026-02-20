@@ -55,6 +55,13 @@ func (r *OrderRepository) Create(order domain.Order) error {
 		if rows != 1 {
 			return errors.New("price not found")
 		}
+		_, err = tx.Exec(`
+			INSERT INTO inventory_reservations (order_id, sku, quantity)
+			VALUES ($1, $2, $3)
+		`, order.ID, item.SKU, item.Quantity)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -95,8 +102,35 @@ func (r *OrderRepository) Get(id string) (domain.Order, bool) {
 
 // Update は注文を更新する。
 func (r *OrderRepository) Update(order domain.Order) error {
-	_, err := r.db.Exec(`
+	tx, err := r.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	_, err = tx.Exec(`
 		UPDATE orders SET status = $1 WHERE id = $2
 	`, order.Status, order.ID)
-	return err
+	if err != nil {
+		return err
+	}
+	if order.Status == domain.OrderStatusCanceled {
+		_, err = tx.Exec(`
+			DELETE FROM inventory_reservations WHERE order_id = $1
+		`, order.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
 }

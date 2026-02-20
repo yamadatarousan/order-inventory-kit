@@ -33,7 +33,7 @@ func openTestDB(t *testing.T) *sql.DB {
 func resetTables(t *testing.T, db *sql.DB) {
 	t.Helper()
 	_, err := db.Exec(`
-		TRUNCATE TABLE payments, order_items, orders, inventory RESTART IDENTITY CASCADE;
+		TRUNCATE TABLE payments, inventory_reservations, order_items, orders, inventory RESTART IDENTITY CASCADE;
 	`)
 	if err != nil {
 		t.Fatalf("failed to truncate tables: %v", err)
@@ -84,6 +84,16 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
 		  on_hand INTEGER NOT NULL DEFAULT 0 CHECK (on_hand >= 0),
 		  reserved INTEGER NOT NULL DEFAULT 0 CHECK (reserved >= 0)
+		);
+		CREATE TABLE IF NOT EXISTS inventory_reservations (
+		  order_id TEXT NOT NULL,
+		  sku TEXT NOT NULL,
+		  quantity INTEGER NOT NULL CHECK (quantity >= 1),
+		  PRIMARY KEY (order_id, sku),
+		  CONSTRAINT inventory_reservations_order_item_fk
+		    FOREIGN KEY (order_id, sku)
+		    REFERENCES order_items(order_id, sku)
+		    ON DELETE CASCADE
 		);
 		ALTER TABLE inventory
 		  ADD COLUMN IF NOT EXISTS quantity INTEGER;

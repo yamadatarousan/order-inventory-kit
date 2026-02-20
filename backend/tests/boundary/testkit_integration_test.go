@@ -150,7 +150,7 @@ func reset境界統合Tables(t *testing.T, db *sql.DB) {
 	t.Helper()
 
 	_, err := db.Exec(`
-		TRUNCATE TABLE payments, order_items, orders, inventory RESTART IDENTITY CASCADE;
+		TRUNCATE TABLE payments, inventory_reservations, order_items, orders, inventory RESTART IDENTITY CASCADE;
 	`)
 	if err != nil {
 		t.Fatalf("failed to truncate tables: %v", err)
