@@ -135,6 +135,38 @@ func TestIntegration_OrderBoundary_POST_orders_200_quantity境界値1は受理�
 	assertInventoryReserveTransition(t, "after create", beforeInventory, afterCreateInventory, 1)
 }
 
+// このテストは 注文作成と在庫引当の整合方針（補償処理）を統合境界で固定する。
+// 仕様対象: 複数明細の在庫確保途中で失敗した場合、先行確保分を補償で戻し副作用を残さない。
+// 根拠: 同一トランザクション非採用時でも、外部観測として一貫した失敗結果を保証するため。
+func TestIntegration_OrderBoundary_POST_orders_在庫確保途中失敗は補償で副作用を残さない(t *testing.T) {
+	kit := new境界統合Testkit(t)
+	// 観測4: 失敗試行前の副作用DB基準値を取得する。
+	before := snapshot境界統合副作用(t, kit)
+	beforeInventory := inventoryStateBySKU(t, kit, "sku-1")
+
+	payload, _ := json.Marshal(map[string]any{
+		"customerId": "c-1",
+		"items": []map[string]any{
+			{"sku": "sku-1", "quantity": 1},
+			{"sku": "missing-sku", "quantity": 1},
+		},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	// 観測1/2/4: 400分類・エラー主要項目・副作用なし（補償で基準値に戻る）を検証する。
+	assert400NoSideEffect(t, "P5-ORD-COMP-01", w, before, snapshot境界統合副作用(t, kit))
+	// 観測3: 後続API状態として、次の正常注文が成功し在庫遷移も一貫することを検証する。
+	createRes := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+	if createRes.Status != "accepted" {
+		t.Fatalf("[P5-ORD-COMP-01] expected accepted after compensation path, got %s", createRes.Status)
+	}
+	afterCreateInventory := inventoryStateBySKU(t, kit, "sku-1")
+	assertInventoryReserveTransition(t, "P5-ORD-COMP-01 after recovery create", beforeInventory, afterCreateInventory, 1)
+}
+
 // このテストは GET /orders/{id} の 200 を統合境界で固定する。
 // 仕様対象: 既存ID参照時に主要項目（id/customerId/status/items）を返す。
 // 根拠: GET境界の主要観測が他操作のテストに埋もれないよう独立固定するため。

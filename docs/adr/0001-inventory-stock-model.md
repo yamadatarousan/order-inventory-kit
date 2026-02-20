@@ -19,6 +19,10 @@
   - 決済確定: 在庫を減算しない
   - 出荷確定: `OnHand` を減算し、対応する `Reserved` を減算する
 - 出荷未実装期間は `OnHand` を変更しない
+- 注文作成と在庫引当の整合は「補償処理」を採用する
+  - 方針: `CreateOrder` では `Reserve` を先に実行し、その後 `orders.Create` を実行する
+  - `Reserve` 途中失敗、または `orders.Create` 失敗時は、先行して確保した明細を逆順で `Release` して補償する
+  - 補償が失敗した場合は `compensation failed` として失敗を返し、再実行/運用対応の対象として扱う
 - 既存データ移行は次で固定する
   - `on_hand = 旧 quantity`
   - `reserved = 0`
