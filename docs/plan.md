@@ -346,7 +346,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
   - [x] Inventory ドメインを標準モデルへ更新する（単一 `Quantity` 依存を廃止し、`Reserve` / `Release` の不変条件を再定義）
   - [x] InventoryRepository 契約を標準モデルへ更新する（戻り値/永続状態の検証軸を `on_hand` / `reserved` / `available` に変更）
   - [x] 同時実行制御を標準モデル前提で再検証する（`Reserve` / `Release` の行ロックと競合時の不変条件）
-  - [ ] OrderUsecase と在庫の接続を更新する（`CreateOrder` で確保、`CancelOrder` で戻し、失敗時の副作用を残さない）
+  - [x] OrderUsecase と在庫の接続を更新する（`CreateOrder` で確保、`CancelOrder` で戻し、失敗時の副作用を残さない）
   - [ ] 注文作成と在庫引当の整合方針を固定する（同一トランザクションまたは補償処理を定義し実装する）
   - [ ] 在庫引当の追跡方式を確定する（`inventory_reservations` テーブルの要否を判定する）
   - [ ] （要導入の場合）`inventory_reservations` テーブルを追加し、引当/戻しの参照整合を実装する（migration/seed/参照制約）

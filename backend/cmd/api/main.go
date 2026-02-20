@@ -78,7 +78,8 @@ func main() {
 
 	orderRepo := infra.NewOrderRepository(db)
 	paymentRepo := infra.NewPaymentRepository(db)
-	uc := usecase.NewOrderUsecase(orderRepo, paymentRepo, newOrderID)
+	inventoryRepo := infra.NewInventoryRepository(db)
+	uc := usecase.NewOrderUsecase(orderRepo, paymentRepo, inventoryRepo, newOrderID)
 	router := newRouter(uc)
 
 	log.Printf("api server starting: addr=%s", cfg.APIAddr)

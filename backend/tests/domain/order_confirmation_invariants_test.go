@@ -68,11 +68,22 @@ func (r *確定不変条件用PaymentRepo) confirmedCount(orderID string) int {
 	return len(r.keys[orderID])
 }
 
+type 確定不変条件用InventoryRepo struct{}
+
+func (r *確定不変条件用InventoryRepo) Reserve(_ string, _ int) (domain.Inventory, error) {
+	return domain.Inventory{}, nil
+}
+
+func (r *確定不変条件用InventoryRepo) Release(_ string, _ int) (domain.Inventory, error) {
+	return domain.Inventory{}, nil
+}
+
 func TestConfirmPayment_不変条件_再確定は失敗し状態と副作用が増えない(t *testing.T) {
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
 	orders := &確定不変条件用OrderRepo{order: order}
 	payments := new確定不変条件用PaymentRepo()
-	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
+	inventories := &確定不変条件用InventoryRepo{}
+	uc := usecase.NewOrderUsecase(orders, payments, inventories, func() string { return "unused" })
 
 	_, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
 		OrderID:        "order-1",
@@ -123,7 +134,8 @@ func TestConfirmPayment_不変条件_同一キー再送で支払いが二重計�
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
 	orders := &確定不変条件用OrderRepo{order: order}
 	payments := new確定不変条件用PaymentRepo()
-	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
+	inventories := &確定不変条件用InventoryRepo{}
+	uc := usecase.NewOrderUsecase(orders, payments, inventories, func() string { return "unused" })
 
 	_, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
 		OrderID:        "order-1",
@@ -163,7 +175,8 @@ func TestConfirmPayment_不変条件_金額一致時は成功する(t *testing.T
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
 	orders := &確定不変条件用OrderRepo{order: order}
 	payments := new確定不変条件用PaymentRepo()
-	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
+	inventories := &確定不変条件用InventoryRepo{}
+	uc := usecase.NewOrderUsecase(orders, payments, inventories, func() string { return "unused" })
 
 	_, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
 		OrderID:        "order-1",
@@ -179,7 +192,8 @@ func TestConfirmPayment_不変条件_合計算出に不一致の金額は失敗�
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
 	orders := &確定不変条件用OrderRepo{order: order}
 	payments := new確定不変条件用PaymentRepo()
-	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
+	inventories := &確定不変条件用InventoryRepo{}
+	uc := usecase.NewOrderUsecase(orders, payments, inventories, func() string { return "unused" })
 
 	_, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
 		OrderID:        "order-1",
@@ -204,7 +218,8 @@ func TestConfirmPayment_不変条件_同一キー異額再送は失敗し副作�
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
 	orders := &確定不変条件用OrderRepo{order: order}
 	payments := new確定不変条件用PaymentRepo()
-	uc := usecase.NewOrderUsecase(orders, payments, func() string { return "unused" })
+	inventories := &確定不変条件用InventoryRepo{}
+	uc := usecase.NewOrderUsecase(orders, payments, inventories, func() string { return "unused" })
 
 	_, err := uc.ConfirmPayment(usecase.ConfirmPaymentInput{
 		OrderID:        "order-1",

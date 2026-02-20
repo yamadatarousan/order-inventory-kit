@@ -20,16 +20,28 @@ type PaymentRepository interface {
 	Confirm(orderID, idempotencyKey string, amount int) error
 }
 
+// OrderInventoryRepository は注文操作で使う在庫更新を抽象化する。
+type OrderInventoryRepository interface {
+	Reserve(sku string, quantity int) (domain.Inventory, error)
+	Release(sku string, quantity int) (domain.Inventory, error)
+}
+
 // OrderUsecase は注文まわりのユースケースを提供する。
 type OrderUsecase struct {
-	orders   OrderRepository
-	payments PaymentRepository
-	idGen    func() string
+	orders      OrderRepository
+	payments    PaymentRepository
+	inventories OrderInventoryRepository
+	idGen       func() string
 }
 
 // NewOrderUsecase は依存を受け取ってユースケースを生成する。
-func NewOrderUsecase(orders OrderRepository, payments PaymentRepository, idGen func() string) *OrderUsecase {
-	return &OrderUsecase{orders: orders, payments: payments, idGen: idGen}
+func NewOrderUsecase(
+	orders OrderRepository,
+	payments PaymentRepository,
+	inventories OrderInventoryRepository,
+	idGen func() string,
+) *OrderUsecase {
+	return &OrderUsecase{orders: orders, payments: payments, inventories: inventories, idGen: idGen}
 }
 
 // CreateOrderInput は注文作成の入力。
@@ -46,11 +58,30 @@ type CreateOrderOutput struct {
 
 // CreateOrder は注文を作成する。
 func (u *OrderUsecase) CreateOrder(input CreateOrderInput) (CreateOrderOutput, error) {
+	if u.inventories == nil {
+		return CreateOrderOutput{}, errors.New("inventory repository is required")
+	}
+
 	order, err := domain.NewOrder(u.idGen(), input.CustomerID, input.Items)
 	if err != nil {
 		return CreateOrderOutput{}, err
 	}
+
+	reservedItems := make([]domain.OrderItem, 0, len(order.Items))
+	for _, item := range order.Items {
+		if _, err := u.inventories.Reserve(item.SKU, item.Quantity); err != nil {
+			if compensationErr := u.compensateRelease(reservedItems); compensationErr != nil {
+				return CreateOrderOutput{}, errors.Join(errors.New("compensation failed"), err, compensationErr)
+			}
+			return CreateOrderOutput{}, err
+		}
+		reservedItems = append(reservedItems, item)
+	}
+
 	if err := u.orders.Create(order); err != nil {
+		if compensationErr := u.compensateRelease(reservedItems); compensationErr != nil {
+			return CreateOrderOutput{}, errors.Join(errors.New("compensation failed"), err, compensationErr)
+		}
 		return CreateOrderOutput{}, err
 	}
 	return CreateOrderOutput{OrderID: order.ID, Status: order.Status}, nil
@@ -63,12 +94,31 @@ func (u *OrderUsecase) GetOrder(id string) (domain.Order, bool) {
 
 // CancelOrder は注文をキャンセルする。
 func (u *OrderUsecase) CancelOrder(id string) (domain.Order, error) {
+	if u.inventories == nil {
+		return domain.Order{}, errors.New("inventory repository is required")
+	}
+
 	order, ok := u.orders.Get(id)
 	if !ok {
 		return domain.Order{}, errors.New("not found")
 	}
+
+	releasedItems := make([]domain.OrderItem, 0, len(order.Items))
+	for _, item := range order.Items {
+		if _, err := u.inventories.Release(item.SKU, item.Quantity); err != nil {
+			if compensationErr := u.compensateReserve(releasedItems); compensationErr != nil {
+				return domain.Order{}, errors.Join(errors.New("compensation failed"), err, compensationErr)
+			}
+			return domain.Order{}, err
+		}
+		releasedItems = append(releasedItems, item)
+	}
+
 	order.Status = domain.OrderStatusCanceled
 	if err := u.orders.Update(order); err != nil {
+		if compensationErr := u.compensateReserve(releasedItems); compensationErr != nil {
+			return domain.Order{}, errors.Join(errors.New("compensation failed"), err, compensationErr)
+		}
 		return domain.Order{}, err
 	}
 	return order, nil
@@ -111,4 +161,24 @@ func (u *OrderUsecase) ConfirmPayment(input ConfirmPaymentInput) (ConfirmPayment
 		return ConfirmPaymentOutput{}, err
 	}
 	return ConfirmPaymentOutput{OrderID: input.OrderID, PaymentStatus: "confirmed"}, nil
+}
+
+func (u *OrderUsecase) compensateRelease(items []domain.OrderItem) error {
+	for i := len(items) - 1; i >= 0; i-- {
+		item := items[i]
+		if _, err := u.inventories.Release(item.SKU, item.Quantity); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (u *OrderUsecase) compensateReserve(items []domain.OrderItem) error {
+	for i := len(items) - 1; i >= 0; i-- {
+		item := items[i]
+		if _, err := u.inventories.Reserve(item.SKU, item.Quantity); err != nil {
+			return err
+		}
+	}
+	return nil
 }
