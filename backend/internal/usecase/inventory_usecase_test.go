@@ -82,7 +82,7 @@ func TestReserveInventory_異常系_存在しないSKUは失敗(t *testing.T) {
 
 func TestReleaseInventory_正常系(t *testing.T) {
 	repo := newMemoryInventoryRepo()
-	inv, _ := domain.NewInventory("sku-1", 2)
+	inv, _ := domain.NewInventory("sku-1", 5, 3)
 	repo.items["sku-1"] = inv
 
 	uc := NewInventoryUsecase(repo)
