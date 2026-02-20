@@ -23,6 +23,15 @@
   - 方針: `CreateOrder` では `Reserve` を先に実行し、その後 `orders.Create` を実行する
   - `Reserve` 途中失敗、または `orders.Create` 失敗時は、先行して確保した明細を逆順で `Release` して補償する
   - 補償が失敗した場合は `compensation failed` として失敗を返し、再実行/運用対応の対象として扱う
+- 在庫引当の追跡方式は「専用台帳テーブルを導入する」を採用する
+  - 判定: `inventory_reservations` を導入する
+  - 目的:
+    - 注文ごとの引当量を行単位で追跡し、`inventory.reserved` 集計との参照整合を担保する
+    - 期限切れ解放・部分キャンセル・部分出荷・監査要求に備える
+  - 設計方針:
+    - `CreateOrder` 成功時に注文明細単位の引当行を作成する
+    - `CancelOrder` で戻し対象の引当行を減算/解放する
+    - `inventory_reservations` の集計と `inventory.reserved` が一致することを不変条件として扱う
 - 既存データ移行は次で固定する
   - `on_hand = 旧 quantity`
   - `reserved = 0`
@@ -32,6 +41,7 @@
 - 既存 `inventory` レコードは `on_hand=旧quantity` / `reserved=0` でバックフィルする
 - Repository/Domainの契約は `Reserve` / `Release` と `on_hand/reserved/available` 観測へ更新する
 - 不変条件テストと境界一貫性統合テストの期待値を標準モデルへ更新する
+- `inventory_reservations` を作成し、引当/戻しの参照整合を実装対象に含める
 
 ## Related
 - `docs/plan.md` の「Phase 5 完了後に着手する拡張タスク（EC在庫・決済金額整合）」
