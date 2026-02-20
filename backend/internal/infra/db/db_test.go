@@ -81,8 +81,28 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		);
 		CREATE TABLE IF NOT EXISTS inventory (
 		  sku TEXT PRIMARY KEY,
-		  quantity INTEGER NOT NULL CHECK (quantity >= 0)
+		  quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+		  on_hand INTEGER NOT NULL DEFAULT 0 CHECK (on_hand >= 0),
+		  reserved INTEGER NOT NULL DEFAULT 0 CHECK (reserved >= 0)
 		);
+		ALTER TABLE inventory
+		  ADD COLUMN IF NOT EXISTS quantity INTEGER;
+		ALTER TABLE inventory
+		  ADD COLUMN IF NOT EXISTS on_hand INTEGER;
+		ALTER TABLE inventory
+		  ADD COLUMN IF NOT EXISTS reserved INTEGER;
+		UPDATE inventory
+		SET
+		  on_hand = COALESCE(on_hand, quantity, 0),
+		  reserved = COALESCE(reserved, 0),
+		  quantity = COALESCE(quantity, on_hand - reserved, 0);
+		ALTER TABLE inventory
+		  ALTER COLUMN quantity SET NOT NULL,
+		  ALTER COLUMN quantity SET DEFAULT 0,
+		  ALTER COLUMN on_hand SET NOT NULL,
+		  ALTER COLUMN on_hand SET DEFAULT 0,
+		  ALTER COLUMN reserved SET NOT NULL,
+		  ALTER COLUMN reserved SET DEFAULT 0;
 		INSERT INTO product_prices (sku, unit_price, currency) VALUES
 		  ('sku-1', 100, 'JPY'),
 		  ('sku-2', 80, 'JPY'),

@@ -344,7 +344,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
   - [x] 決済永続化に `amount` を保存する（`payments.amount` 追加と既存データ移行方針を定義）
   - [x] 既存注文データの金額移行方針を固定する（`order_items.unit_price` 導入時のバックフィル/扱いを定義）
   - [x] Inventory ドメインを標準モデルへ更新する（単一 `Quantity` 依存を廃止し、`Reserve` / `Release` の不変条件を再定義）
-  - [ ] InventoryRepository 契約を標準モデルへ更新する（戻り値/永続状態の検証軸を `on_hand` / `reserved` / `available` に変更）
+  - [x] InventoryRepository 契約を標準モデルへ更新する（戻り値/永続状態の検証軸を `on_hand` / `reserved` / `available` に変更）
   - [ ] 同時実行制御を標準モデル前提で再検証する（`Reserve` / `Release` の行ロックと競合時の不変条件）
   - [ ] OrderUsecase と在庫の接続を更新する（`CreateOrder` で確保、`CancelOrder` で戻し、失敗時の副作用を残さない）
   - [ ] 注文作成と在庫引当の整合方針を固定する（同一トランザクションまたは補償処理を定義し実装する）

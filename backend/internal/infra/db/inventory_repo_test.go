@@ -11,7 +11,7 @@ func TestInventoryRepository_GetBySKU_存在する場合(t *testing.T) {
 	ensureSchema(t, db)
 	resetTables(t, db)
 
-	_, err := db.Exec(`INSERT INTO inventory (sku, quantity) VALUES ($1, $2)`, "sku-1", 10)
+	_, err := db.Exec(`INSERT INTO inventory (sku, quantity, on_hand, reserved) VALUES ($1, $2, $3, $4)`, "sku-1", 8, 10, 2)
 	if err != nil {
 		t.Fatalf("failed to insert inventory: %v", err)
 	}
@@ -24,8 +24,8 @@ func TestInventoryRepository_GetBySKU_存在する場合(t *testing.T) {
 	if inv.SKU != "sku-1" {
 		t.Fatalf("expected sku-1, got %s", inv.SKU)
 	}
-	if inv.Quantity != 10 {
-		t.Fatalf("expected quantity 10, got %d", inv.Quantity)
+	if inv.OnHand != 10 || inv.Reserved != 2 || inv.Available() != 8 {
+		t.Fatalf("expected (on_hand,reserved,available)=(10,2,8), got (%d,%d,%d)", inv.OnHand, inv.Reserved, inv.Available())
 	}
 }
 
@@ -35,7 +35,7 @@ func TestInventoryRepository_Reserve_正常系(t *testing.T) {
 	ensureSchema(t, db)
 	resetTables(t, db)
 
-	_, err := db.Exec(`INSERT INTO inventory (sku, quantity) VALUES ($1, $2)`, "sku-1", 5)
+	_, err := db.Exec(`INSERT INTO inventory (sku, quantity, on_hand, reserved) VALUES ($1, $2, $3, $4)`, "sku-1", 5, 5, 0)
 	if err != nil {
 		t.Fatalf("failed to insert inventory: %v", err)
 	}
@@ -45,8 +45,8 @@ func TestInventoryRepository_Reserve_正常系(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if inv.Quantity != 3 {
-		t.Fatalf("expected quantity 3, got %d", inv.Quantity)
+	if inv.OnHand != 5 || inv.Reserved != 2 || inv.Available() != 3 {
+		t.Fatalf("expected (on_hand,reserved,available)=(5,2,3), got (%d,%d,%d)", inv.OnHand, inv.Reserved, inv.Available())
 	}
 }
 
@@ -56,7 +56,7 @@ func TestInventoryRepository_Reserve_異常系_在庫不足(t *testing.T) {
 	ensureSchema(t, db)
 	resetTables(t, db)
 
-	_, err := db.Exec(`INSERT INTO inventory (sku, quantity) VALUES ($1, $2)`, "sku-1", 1)
+	_, err := db.Exec(`INSERT INTO inventory (sku, quantity, on_hand, reserved) VALUES ($1, $2, $3, $4)`, "sku-1", 1, 1, 0)
 	if err != nil {
 		t.Fatalf("failed to insert inventory: %v", err)
 	}
@@ -68,8 +68,8 @@ func TestInventoryRepository_Reserve_異常系_在庫不足(t *testing.T) {
 	}
 
 	inv, _ := repo.GetBySKU("sku-1")
-	if inv.Quantity != 1 {
-		t.Fatalf("expected quantity to remain 1, got %d", inv.Quantity)
+	if inv.OnHand != 1 || inv.Reserved != 0 || inv.Available() != 1 {
+		t.Fatalf("expected unchanged (on_hand,reserved,available)=(1,0,1), got (%d,%d,%d)", inv.OnHand, inv.Reserved, inv.Available())
 	}
 }
 
@@ -79,17 +79,17 @@ func TestInventoryRepository_Release_正常系(t *testing.T) {
 	ensureSchema(t, db)
 	resetTables(t, db)
 
-	_, err := db.Exec(`INSERT INTO inventory (sku, quantity) VALUES ($1, $2)`, "sku-1", 2)
+	_, err := db.Exec(`INSERT INTO inventory (sku, quantity, on_hand, reserved) VALUES ($1, $2, $3, $4)`, "sku-1", 7, 10, 3)
 	if err != nil {
 		t.Fatalf("failed to insert inventory: %v", err)
 	}
 
 	repo := NewInventoryRepository(db)
-	inv, err := repo.Release("sku-1", 3)
+	inv, err := repo.Release("sku-1", 2)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if inv.Quantity != 5 {
-		t.Fatalf("expected quantity 5, got %d", inv.Quantity)
+	if inv.OnHand != 10 || inv.Reserved != 1 || inv.Available() != 9 {
+		t.Fatalf("expected (on_hand,reserved,available)=(10,1,9), got (%d,%d,%d)", inv.OnHand, inv.Reserved, inv.Available())
 	}
 }

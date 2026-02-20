@@ -21,11 +21,19 @@ func NewInventoryRepository(db *sql.DB) *InventoryRepository {
 // GetBySKU はSKUで在庫を取得する。
 func (r *InventoryRepository) GetBySKU(sku string) (domain.Inventory, bool) {
 	row := r.db.QueryRow(`
-		SELECT sku, quantity FROM inventory WHERE sku = $1
+		SELECT sku, on_hand, reserved FROM inventory WHERE sku = $1
 	`, sku)
 
-	var inv domain.Inventory
-	if err := row.Scan(&inv.SKU, &inv.Quantity); err != nil {
+	var (
+		invSKU   string
+		onHand   int
+		reserved int
+	)
+	if err := row.Scan(&invSKU, &onHand, &reserved); err != nil {
+		return domain.Inventory{}, false
+	}
+	inv, err := domain.NewInventory(invSKU, onHand, reserved)
+	if err != nil {
 		return domain.Inventory{}, false
 	}
 	return inv, true
@@ -48,14 +56,22 @@ func (r *InventoryRepository) Reserve(sku string, quantity int) (domain.Inventor
 		}
 	}()
 
-	var inv domain.Inventory
+	var (
+		invSKU   string
+		onHand   int
+		reserved int
+	)
 	row := tx.QueryRow(`
-		SELECT sku, quantity FROM inventory WHERE sku = $1 FOR UPDATE
+		SELECT sku, on_hand, reserved FROM inventory WHERE sku = $1 FOR UPDATE
 	`, sku)
-	if err := row.Scan(&inv.SKU, &inv.Quantity); err != nil {
+	if err := row.Scan(&invSKU, &onHand, &reserved); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return domain.Inventory{}, errors.New("not found")
 		}
+		return domain.Inventory{}, err
+	}
+	inv, err := domain.NewInventory(invSKU, onHand, reserved)
+	if err != nil {
 		return domain.Inventory{}, err
 	}
 
@@ -64,8 +80,10 @@ func (r *InventoryRepository) Reserve(sku string, quantity int) (domain.Inventor
 	}
 
 	if _, err := tx.Exec(`
-		UPDATE inventory SET quantity = $2 WHERE sku = $1
-	`, inv.SKU, inv.Quantity); err != nil {
+		UPDATE inventory
+		SET on_hand = $2, reserved = $3, quantity = $4
+		WHERE sku = $1
+	`, inv.SKU, inv.OnHand, inv.Reserved, inv.Available()); err != nil {
 		return domain.Inventory{}, err
 	}
 
@@ -93,14 +111,22 @@ func (r *InventoryRepository) Release(sku string, quantity int) (domain.Inventor
 		}
 	}()
 
-	var inv domain.Inventory
+	var (
+		invSKU   string
+		onHand   int
+		reserved int
+	)
 	row := tx.QueryRow(`
-		SELECT sku, quantity FROM inventory WHERE sku = $1 FOR UPDATE
+		SELECT sku, on_hand, reserved FROM inventory WHERE sku = $1 FOR UPDATE
 	`, sku)
-	if err := row.Scan(&inv.SKU, &inv.Quantity); err != nil {
+	if err := row.Scan(&invSKU, &onHand, &reserved); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return domain.Inventory{}, errors.New("not found")
 		}
+		return domain.Inventory{}, err
+	}
+	inv, err := domain.NewInventory(invSKU, onHand, reserved)
+	if err != nil {
 		return domain.Inventory{}, err
 	}
 
@@ -109,8 +135,10 @@ func (r *InventoryRepository) Release(sku string, quantity int) (domain.Inventor
 	}
 
 	if _, err := tx.Exec(`
-		UPDATE inventory SET quantity = $2 WHERE sku = $1
-	`, inv.SKU, inv.Quantity); err != nil {
+		UPDATE inventory
+		SET on_hand = $2, reserved = $3, quantity = $4
+		WHERE sku = $1
+	`, inv.SKU, inv.OnHand, inv.Reserved, inv.Available()); err != nil {
 		return domain.Inventory{}, err
 	}
 
