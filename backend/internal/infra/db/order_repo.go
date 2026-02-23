@@ -34,6 +34,14 @@ func (r *OrderRepository) Create(order domain.Order, quotedUnitPrices map[string
 		}
 	}()
 
+	customerExists, err := r.customerExists(tx, order.CustomerID)
+	if err != nil {
+		return err
+	}
+	if !customerExists {
+		return domain.ErrInvalidCustomer
+	}
+
 	_, err = tx.Exec(`
 		INSERT INTO orders (id, customer_id, status) VALUES ($1, $2, $3)
 	`, order.ID, order.CustomerID, order.Status)
@@ -62,6 +70,20 @@ func (r *OrderRepository) Create(order domain.Order, quotedUnitPrices map[string
 	}
 	committed = true
 	return nil
+}
+
+func (r *OrderRepository) customerExists(tx *sql.Tx, customerID string) (bool, error) {
+	var exists bool
+	if err := tx.QueryRow(`
+		SELECT EXISTS(
+		  SELECT 1
+		  FROM customers
+		  WHERE id = $1
+		)
+	`, customerID).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
 }
 
 // insertOrderItemWithSnapshot は商品マスタ価格と照合しつつ注文明細の単価スナップショットを保存する。

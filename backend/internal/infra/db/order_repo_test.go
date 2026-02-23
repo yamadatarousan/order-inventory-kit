@@ -346,6 +346,38 @@ func TestOrderRepository_販売停止SKUを含む注文は失敗する(t *testin
 	}
 }
 
+func TestOrderRepository_未存在customerIdの注文は失敗し保存されない(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ensureSchema(t, db)
+	resetTables(t, db)
+
+	repo := NewOrderRepository(db)
+	order, _ := domain.NewOrder("order-1", "missing-customer", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err == nil {
+		t.Fatalf("expected create to fail when customer is missing")
+	} else if !errors.Is(err, domain.ErrInvalidCustomer) {
+		t.Fatalf("expected invalid customer error, got %v", err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM orders WHERE id = $1`, "order-1").Scan(&count); err != nil {
+		t.Fatalf("failed to count order rows: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("order row must not be persisted on failure, got %d", count)
+	}
+
+	var reservationCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM inventory_reservations WHERE order_id = $1`, "order-1").Scan(&reservationCount); err != nil {
+		t.Fatalf("failed to count reservation rows: %v", err)
+	}
+	if reservationCount != 0 {
+		t.Fatalf("reservation rows must not be persisted on failure, got %d", reservationCount)
+	}
+}
+
 func TestOrderRepository_期限切れ_acceptedは引当を戻してcanceledに更新する(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()

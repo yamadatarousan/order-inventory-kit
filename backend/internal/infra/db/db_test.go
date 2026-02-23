@@ -142,8 +142,28 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		ALTER TABLE orders
 		  ADD COLUMN IF NOT EXISTS customer_id TEXT;
 		UPDATE orders SET customer_id = 'unknown' WHERE customer_id IS NULL;
+		UPDATE orders
+		SET customer_id = 'unknown'
+		WHERE NOT EXISTS (
+		  SELECT 1
+		  FROM customers
+		  WHERE customers.id = orders.customer_id
+		);
 		ALTER TABLE orders
 		  ALTER COLUMN customer_id SET NOT NULL;
+		DO $$
+		BEGIN
+		  IF NOT EXISTS (
+		    SELECT 1
+		    FROM pg_constraint
+		    WHERE conname = 'orders_customer_id_fk'
+		  ) THEN
+		    ALTER TABLE orders
+		      ADD CONSTRAINT orders_customer_id_fk
+		      FOREIGN KEY (customer_id)
+		      REFERENCES customers(id);
+		  END IF;
+		END $$;
 	`)
 	if err != nil {
 		t.Fatalf("failed to ensure schema: %v", err)

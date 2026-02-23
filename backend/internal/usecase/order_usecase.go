@@ -118,6 +118,12 @@ func (u *OrderUsecase) CreateOrder(input CreateOrderInput) (CreateOrderOutput, e
 	}
 
 	if err := u.orders.Create(order, input.QuotedUnitPrices); err != nil {
+		if errors.Is(err, domain.ErrInvalidCustomer) {
+			if compensationErr := u.compensateRelease(reservedItems); compensationErr != nil {
+				return CreateOrderOutput{}, errors.Join(errors.New("compensation failed"), err, compensationErr)
+			}
+			return CreateOrderOutput{}, ErrCreateOrderInvalidCustomer
+		}
 		if errors.Is(err, domain.ErrPriceConflict) {
 			if compensationErr := u.compensateRelease(reservedItems); compensationErr != nil {
 				return CreateOrderOutput{}, errors.Join(errors.New("compensation failed"), err, compensationErr)

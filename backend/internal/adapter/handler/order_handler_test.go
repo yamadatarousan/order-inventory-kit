@@ -128,6 +128,33 @@ func TestCreateOrder_価格不一致(t *testing.T) {
 	}
 }
 
+func TestCreateOrder_顧客不整合(t *testing.T) {
+	uc := &stubUsecase{
+		createOrderFunc: func(input usecase.CreateOrderInput) (usecase.CreateOrderOutput, error) {
+			return usecase.CreateOrderOutput{}, usecase.ErrCreateOrderInvalidCustomer
+		},
+		getOrderFunc:    func(id string) (domain.Order, bool) { return domain.Order{}, false },
+		cancelOrderFunc: func(id string) (domain.Order, error) { return domain.Order{}, nil },
+		confirmPaymentFunc: func(input usecase.ConfirmPaymentInput) (usecase.ConfirmPaymentOutput, error) {
+			return usecase.ConfirmPaymentOutput{}, nil
+		},
+	}
+	r := setupRouter(t, uc)
+
+	payload, _ := json.Marshal(map[string]any{
+		"customerId": "missing-customer",
+		"items":      []map[string]any{{"sku": "sku-1", "quantity": 1, "unitPrice": 100}},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
 func TestGetOrder_存在する場合(t *testing.T) {
 	uc := &stubUsecase{
 		createOrderFunc: func(input usecase.CreateOrderInput) (usecase.CreateOrderOutput, error) {

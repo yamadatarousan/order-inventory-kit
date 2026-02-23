@@ -12,11 +12,12 @@ import (
 // 仕様対象: 注文作成/参照/キャンセル/決済確定の状態遷移と在庫接続時の補償挙動。
 // 根拠: 下位実装変更時にも業務フローの期待挙動と副作用制御を維持するため。
 type memoryOrderRepo struct {
-	items       map[string]domain.Order
-	createCalls int
-	updateCalls int
-	failCreate  bool
-	failUpdate  bool
+	items               map[string]domain.Order
+	createCalls         int
+	updateCalls         int
+	failCreate          bool
+	failUpdate          bool
+	failInvalidCustomer bool
 }
 
 func newMemoryOrderRepo() *memoryOrderRepo {
@@ -25,6 +26,9 @@ func newMemoryOrderRepo() *memoryOrderRepo {
 
 func (r *memoryOrderRepo) Create(order domain.Order, quotedUnitPrices map[string]int) error {
 	r.createCalls++
+	if r.failInvalidCustomer {
+		return domain.ErrInvalidCustomer
+	}
 	if r.failCreate {
 		return errors.New("create failed")
 	}
@@ -41,6 +45,31 @@ func (r *memoryOrderRepo) Create(order domain.Order, quotedUnitPrices map[string
 	}
 	r.items[order.ID] = order
 	return nil
+}
+
+func TestCreateOrder_異常系_永続化の顧客参照不整合は400分類用エラーで失敗する(t *testing.T) {
+	orders := newMemoryOrderRepo()
+	orders.failInvalidCustomer = true
+	payments := newMemoryPaymentRepo()
+	inventories := newMemoryOrderInventoryRepo()
+	seedInventory(t, inventories, "sku-1", 10, 0)
+	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
+
+	_, err := uc.CreateOrder(CreateOrderInput{
+		CustomerID:       "c-1",
+		Items:            []domain.OrderItem{{SKU: "sku-1", Quantity: 1}},
+		QuotedUnitPrices: map[string]int{"sku-1": 100},
+	})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !errors.Is(err, ErrCreateOrderInvalidCustomer) {
+		t.Fatalf("expected ErrCreateOrderInvalidCustomer, got %v", err)
+	}
+	savedInv := inventories.items["sku-1"]
+	if savedInv.OnHand != 10 || savedInv.Reserved != 0 || savedInv.Available() != 10 {
+		t.Fatalf("expected inventory restored to (10,0,10), got (%d,%d,%d)", savedInv.OnHand, savedInv.Reserved, savedInv.Available())
+	}
 }
 
 func (r *memoryOrderRepo) Get(id string) (domain.Order, bool) {
