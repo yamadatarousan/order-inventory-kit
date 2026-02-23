@@ -63,7 +63,7 @@ func TestCreateOrder_正常系(t *testing.T) {
 
 	body := map[string]any{
 		"customerId": "c-1",
-		"items":      []map[string]any{{"sku": "sku-1", "quantity": 1}},
+		"items":      []map[string]any{{"sku": "sku-1", "quantity": 1, "unitPrice": 100}},
 	}
 	payload, _ := json.Marshal(body)
 
@@ -98,6 +98,33 @@ func TestCreateOrder_不正な入力(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestCreateOrder_価格不一致(t *testing.T) {
+	uc := &stubUsecase{
+		createOrderFunc: func(input usecase.CreateOrderInput) (usecase.CreateOrderOutput, error) {
+			return usecase.CreateOrderOutput{}, usecase.ErrCreateOrderPriceConflict
+		},
+		getOrderFunc:    func(id string) (domain.Order, bool) { return domain.Order{}, false },
+		cancelOrderFunc: func(id string) (domain.Order, error) { return domain.Order{}, nil },
+		confirmPaymentFunc: func(input usecase.ConfirmPaymentInput) (usecase.ConfirmPaymentOutput, error) {
+			return usecase.ConfirmPaymentOutput{}, nil
+		},
+	}
+	r := setupRouter(t, uc)
+
+	payload, _ := json.Marshal(map[string]any{
+		"customerId": "c-1",
+		"items":      []map[string]any{{"sku": "sku-1", "quantity": 1, "unitPrice": 101}},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d", w.Code)
 	}
 }
 

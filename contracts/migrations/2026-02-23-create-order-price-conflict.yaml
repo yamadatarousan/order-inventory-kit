@@ -1,0 +1,24 @@
+id: 2026-02-23-create-order-price-conflict
+summary: "POST /orders で価格照合を必須化し、価格不一致を 409 で返す移行定義"
+breaking_changes:
+  - id: BC-001
+    description: "CreateOrderRequest.items[].unitPrice を必須化する"
+    affected_endpoints:
+      - "POST /orders"
+    mitigation:
+      - "注文作成リクエストに items[].unitPrice を必ず含める"
+      - "表示中価格と送信価格の同期切れ時は再取得して再送する"
+  - id: BC-002
+    description: "POST /orders に 409（price conflict）分類を追加する"
+    affected_endpoints:
+      - "POST /orders"
+    mitigation:
+      - "クライアントで 409 をハンドリングし、価格更新メッセージを表示して再注文導線を出す"
+deprecated_until: "2026-06-30"
+migration_steps:
+  - "Step 1: OpenAPI 生成物を更新し、POST /orders の unitPrice 必須化と 409 を取り込む"
+  - "Step 2: 注文送信時に画面表示価格を items[].unitPrice として送信する"
+  - "Step 3: 409 受信時に価格再取得 -> 再確認 -> 再送のフローを実装する"
+notes:
+  - "サーバ側の価格決定元は products.unit_price を維持する"
+  - "クライアント入力価格は決定元ではなく、注文時点の価格同意確認にのみ使用する"

@@ -29,8 +29,14 @@ func NewOrderHandler(uc orderUsecase) *OrderHandler {
 
 // createOrderRequest は注文作成の入力。
 type createOrderRequest struct {
-	CustomerID string             `json:"customerId"`
-	Items      []domain.OrderItem `json:"items"`
+	CustomerID string                   `json:"customerId"`
+	Items      []createOrderRequestItem `json:"items"`
+}
+
+type createOrderRequestItem struct {
+	SKU       string `json:"sku"`
+	Quantity  int    `json:"quantity"`
+	UnitPrice *int   `json:"unitPrice"`
 }
 
 // createOrderResponse は注文作成の出力。
@@ -67,9 +73,29 @@ func (h *OrderHandler) createOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid request"})
 		return
 	}
-	out, err := h.uc.CreateOrder(usecase.CreateOrderInput{CustomerID: req.CustomerID, Items: req.Items})
+
+	items := make([]domain.OrderItem, 0, len(req.Items))
+	quotedUnitPrices := make(map[string]int, len(req.Items))
+	for _, item := range req.Items {
+		if item.UnitPrice == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "invalid request"})
+			return
+		}
+		items = append(items, domain.OrderItem{
+			SKU:      item.SKU,
+			Quantity: item.Quantity,
+		})
+		quotedUnitPrices[item.SKU] = *item.UnitPrice
+	}
+
+	out, err := h.uc.CreateOrder(usecase.CreateOrderInput{
+		CustomerID:       req.CustomerID,
+		Items:            items,
+		QuotedUnitPrices: quotedUnitPrices,
+	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid request"})
+		status, message := classifyCreateOrderError(err)
+		c.JSON(status, gin.H{"message": message})
 		return
 	}
 	c.JSON(http.StatusOK, createOrderResponse{OrderID: out.OrderID, Status: out.Status})
@@ -123,6 +149,15 @@ func classifyConfirmPaymentError(err error) (int, string) {
 		return http.StatusNotFound, "not found"
 	case errors.Is(err, usecase.ErrConfirmPaymentAmountConflict):
 		return http.StatusConflict, "amount conflict"
+	default:
+		return http.StatusBadRequest, "invalid request"
+	}
+}
+
+func classifyCreateOrderError(err error) (int, string) {
+	switch {
+	case errors.Is(err, usecase.ErrCreateOrderPriceConflict):
+		return http.StatusConflict, "price conflict"
 	default:
 		return http.StatusBadRequest, "invalid request"
 	}

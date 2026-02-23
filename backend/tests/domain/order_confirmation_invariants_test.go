@@ -16,7 +16,7 @@ type 確定不変条件用OrderRepo struct {
 	updateCalls int
 }
 
-func (r *確定不変条件用OrderRepo) Create(order domain.Order) error {
+func (r *確定不変条件用OrderRepo) Create(order domain.Order, _ map[string]int) error {
 	r.order = order
 	return nil
 }

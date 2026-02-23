@@ -14,8 +14,10 @@
 - 丸め規則は「端数処理なし」を採用する
   - `amount` は整数（円）で受け取り、四捨五入/切り上げ/切り捨ては行わない
 - サーバは注文合計を自前で算出し、`amount` と照合する
-  - 算出元はサーバ側の価格情報と `order_items.unit_price` のスナップショットを正とする
+  - 算出元は商品マスタ（`products.unit_price`）と `order_items.unit_price` のスナップショットを正とする
   - クライアント入力の価格は決定元にしない
+- `POST /orders` では、クライアント提示価格（`items[].unitPrice`）と `products.unit_price` を照合する
+  - 不一致時は `409`（price conflict）を返し、注文作成を失敗させる
 - `POST /payments/confirm` の判定
   - `amount == サーバ算出の注文合計`: 成功
   - `amount != サーバ算出の注文合計`: `409`（金額不一致）
@@ -24,13 +26,13 @@
   - 異額再送: `409`
 
 ## 既存注文データ移行方針（`order_items.unit_price` 導入時）
-- 方針: 既存行の `order_items.unit_price` は `product_prices.unit_price` で機械的バックフィルする
+- 方針: 既存行の `order_items.unit_price` は `products.unit_price` で機械的バックフィルする
   - 理由: 学習用システムとして運用の例外を減らし、金額系の経路を単純化するため
 - 既存行の扱い:
   - バックフィル後は `unit_price` 欠損を残さない
   - 金額項目（`unitPrice` / `lineAmount` / `totalAmount`）は全注文で算出可能にする
 - バックフィル不能SKUの扱い:
-  - `order_items.sku` に対応する `product_prices` が存在しない場合、そのSKUを含む注文を削除する
+  - `order_items.sku` に対応する `products` が存在しない場合、そのSKUを含む注文を削除する
   - 削除は注文単位で行い、関連する `order_items` / `payments` も合わせて消える状態を維持する
 
 ## Consequences

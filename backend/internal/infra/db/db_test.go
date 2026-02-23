@@ -79,6 +79,13 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  unit_price INTEGER NOT NULL CHECK (unit_price >= 0),
 		  currency TEXT NOT NULL CHECK (currency = 'JPY')
 		);
+		CREATE TABLE IF NOT EXISTS products (
+		  sku TEXT PRIMARY KEY,
+		  name TEXT NOT NULL,
+		  unit_price INTEGER NOT NULL CHECK (unit_price >= 0),
+		  currency TEXT NOT NULL CHECK (currency = 'JPY'),
+		  is_active BOOLEAN NOT NULL DEFAULT TRUE
+		);
 		CREATE TABLE IF NOT EXISTS inventory (
 		  sku TEXT PRIMARY KEY,
 		  quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
@@ -119,6 +126,16 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  ('sku-3', 50, 'JPY')
 		ON CONFLICT (sku) DO UPDATE
 		SET unit_price = EXCLUDED.unit_price, currency = EXCLUDED.currency;
+		INSERT INTO products (sku, name, unit_price, currency, is_active) VALUES
+		  ('sku-1', '商品sku-1', 100, 'JPY', TRUE),
+		  ('sku-2', '商品sku-2', 80, 'JPY', TRUE),
+		  ('sku-3', '商品sku-3', 50, 'JPY', TRUE)
+		ON CONFLICT (sku) DO UPDATE
+		SET
+		  name = EXCLUDED.name,
+		  unit_price = EXCLUDED.unit_price,
+		  currency = EXCLUDED.currency,
+		  is_active = EXCLUDED.is_active;
 		ALTER TABLE orders
 		  ADD COLUMN IF NOT EXISTS customer_id TEXT;
 		UPDATE orders SET customer_id = 'unknown' WHERE customer_id IS NULL;

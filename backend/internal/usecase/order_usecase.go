@@ -10,6 +10,8 @@ import (
 // ConfirmPayment の公開エラー契約。
 // Handler は errors.Is でHTTP分類を判定する。
 var (
+	ErrCreateOrderPriceConflict = errors.New("price conflict")
+
 	ErrConfirmPaymentInvalidRequest   = errors.New("invalid request")
 	ErrConfirmPaymentNotFound         = errors.New("not found")
 	ErrConfirmPaymentAmountConflict   = errors.New("amount conflict")
@@ -18,7 +20,7 @@ var (
 
 // OrderRepository は注文の永続化を抽象化する。
 type OrderRepository interface {
-	Create(order domain.Order) error
+	Create(order domain.Order, quotedUnitPrices map[string]int) error
 	Get(id string) (domain.Order, bool)
 	GetTotalAmount(id string) (int, bool)
 	Update(order domain.Order) error
@@ -59,6 +61,8 @@ func NewOrderUsecase(
 type CreateOrderInput struct {
 	CustomerID string
 	Items      []domain.OrderItem
+	// QuotedUnitPrices はクライアントが注文時点で同意した単価。
+	QuotedUnitPrices map[string]int
 }
 
 // CreateOrderOutput は注文作成の出力。
@@ -89,7 +93,13 @@ func (u *OrderUsecase) CreateOrder(input CreateOrderInput) (CreateOrderOutput, e
 		reservedItems = append(reservedItems, item)
 	}
 
-	if err := u.orders.Create(order); err != nil {
+	if err := u.orders.Create(order, input.QuotedUnitPrices); err != nil {
+		if errors.Is(err, domain.ErrPriceConflict) {
+			if compensationErr := u.compensateRelease(reservedItems); compensationErr != nil {
+				return CreateOrderOutput{}, errors.Join(errors.New("compensation failed"), err, compensationErr)
+			}
+			return CreateOrderOutput{}, ErrCreateOrderPriceConflict
+		}
 		if compensationErr := u.compensateRelease(reservedItems); compensationErr != nil {
 			return CreateOrderOutput{}, errors.Join(errors.New("compensation failed"), err, compensationErr)
 		}

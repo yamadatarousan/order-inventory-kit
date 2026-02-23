@@ -23,10 +23,21 @@ func newMemoryOrderRepo() *memoryOrderRepo {
 	return &memoryOrderRepo{items: make(map[string]domain.Order)}
 }
 
-func (r *memoryOrderRepo) Create(order domain.Order) error {
+func (r *memoryOrderRepo) Create(order domain.Order, quotedUnitPrices map[string]int) error {
 	r.createCalls++
 	if r.failCreate {
 		return errors.New("create failed")
+	}
+	if quotedUnitPrices != nil {
+		for _, item := range order.Items {
+			quoted, ok := quotedUnitPrices[item.SKU]
+			if !ok {
+				return errors.New("quoted unit price is required")
+			}
+			if quoted != 100 {
+				return domain.ErrPriceConflict
+			}
+		}
 	}
 	r.items[order.ID] = order
 	return nil
@@ -163,7 +174,11 @@ func TestCreateOrder_正常系_在庫確保と注文保存が成功する(t *tes
 	seedInventory(t, inventories, "sku-1", 10, 0)
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
-	out, err := uc.CreateOrder(CreateOrderInput{CustomerID: "c-1", Items: []domain.OrderItem{{SKU: "sku-1", Quantity: 2}}})
+	out, err := uc.CreateOrder(CreateOrderInput{
+		CustomerID:       "c-1",
+		Items:            []domain.OrderItem{{SKU: "sku-1", Quantity: 2}},
+		QuotedUnitPrices: map[string]int{"sku-1": 100},
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -188,7 +203,8 @@ func TestCreateOrder_異常系_在庫確保途中失敗時は副作用を残さ�
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
 	_, err := uc.CreateOrder(CreateOrderInput{
-		CustomerID: "c-1",
+		CustomerID:       "c-1",
+		QuotedUnitPrices: map[string]int{"sku-1": 100, "missing": 100},
 		Items: []domain.OrderItem{
 			{SKU: "sku-1", Quantity: 1},
 			{SKU: "missing", Quantity: 1},
@@ -206,6 +222,33 @@ func TestCreateOrder_異常系_在庫確保途中失敗時は副作用を残さ�
 	}
 }
 
+func TestCreateOrder_異常系_提示価格不一致は409分類用エラーで失敗し副作用を残さない(t *testing.T) {
+	orders := newMemoryOrderRepo()
+	payments := newMemoryPaymentRepo()
+	inventories := newMemoryOrderInventoryRepo()
+	seedInventory(t, inventories, "sku-1", 10, 0)
+	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
+
+	_, err := uc.CreateOrder(CreateOrderInput{
+		CustomerID:       "c-1",
+		Items:            []domain.OrderItem{{SKU: "sku-1", Quantity: 1}},
+		QuotedUnitPrices: map[string]int{"sku-1": 101},
+	})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !errors.Is(err, ErrCreateOrderPriceConflict) {
+		t.Fatalf("expected ErrCreateOrderPriceConflict, got %v", err)
+	}
+	if _, ok := orders.items["order-1"]; ok {
+		t.Fatalf("order must not be saved")
+	}
+	savedInv := inventories.items["sku-1"]
+	if savedInv.OnHand != 10 || savedInv.Reserved != 0 || savedInv.Available() != 10 {
+		t.Fatalf("expected inventory restored to (10,0,10), got (%d,%d,%d)", savedInv.OnHand, savedInv.Reserved, savedInv.Available())
+	}
+}
+
 func TestCreateOrder_異常系_注文保存失敗時は在庫確保を補償する(t *testing.T) {
 	orders := newMemoryOrderRepo()
 	orders.failCreate = true
@@ -214,7 +257,11 @@ func TestCreateOrder_異常系_注文保存失敗時は在庫確保を補償す�
 	seedInventory(t, inventories, "sku-1", 10, 0)
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
-	_, err := uc.CreateOrder(CreateOrderInput{CustomerID: "c-1", Items: []domain.OrderItem{{SKU: "sku-1", Quantity: 2}}})
+	_, err := uc.CreateOrder(CreateOrderInput{
+		CustomerID:       "c-1",
+		Items:            []domain.OrderItem{{SKU: "sku-1", Quantity: 2}},
+		QuotedUnitPrices: map[string]int{"sku-1": 100},
+	})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -238,7 +285,11 @@ func TestCreateOrder_異常系_注文保存失敗かつ補償失敗は補償失�
 	}
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
-	_, err := uc.CreateOrder(CreateOrderInput{CustomerID: "c-1", Items: []domain.OrderItem{{SKU: "sku-1", Quantity: 2}}})
+	_, err := uc.CreateOrder(CreateOrderInput{
+		CustomerID:       "c-1",
+		Items:            []domain.OrderItem{{SKU: "sku-1", Quantity: 2}},
+		QuotedUnitPrices: map[string]int{"sku-1": 100},
+	})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -258,7 +309,7 @@ func TestGetOrder_存在する場合(t *testing.T) {
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
-	_ = orders.Create(order)
+	_ = orders.Create(order, nil)
 
 	got, ok := uc.GetOrder("order-1")
 	if !ok {
@@ -277,7 +328,7 @@ func TestCancelOrder_正常系_在庫を戻して注文を更新する(t *testin
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
-	_ = orders.Create(order)
+	_ = orders.Create(order, nil)
 
 	canceled, err := uc.CancelOrder("order-1")
 	if err != nil {
@@ -303,7 +354,7 @@ func TestCancelOrder_異常系_在庫戻し失敗時は注文を更新しない(
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
-	_ = orders.Create(order)
+	_ = orders.Create(order, nil)
 
 	_, err := uc.CancelOrder("order-1")
 	if err == nil {
@@ -327,7 +378,7 @@ func TestCancelOrder_異常系_注文更新失敗時は在庫戻しを補償す�
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
-	_ = orders.Create(order)
+	_ = orders.Create(order, nil)
 
 	_, err := uc.CancelOrder("order-1")
 	if err == nil {
@@ -351,7 +402,7 @@ func TestCancelOrder_異常系_注文更新失敗かつ補償失敗は補償失�
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
-	_ = orders.Create(order)
+	_ = orders.Create(order, nil)
 
 	_, err := uc.CancelOrder("order-1")
 	if err == nil {
@@ -387,7 +438,7 @@ func TestCancelOrder_不変条件_既にcanceledの注文は失敗し在庫副�
 
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
 	order.Status = domain.OrderStatusCanceled
-	_ = orders.Create(order)
+	_ = orders.Create(order, nil)
 
 	_, err := uc.CancelOrder("order-1")
 	if err == nil {
@@ -412,7 +463,7 @@ func TestConfirmPayment_正常系(t *testing.T) {
 	uc := newOrderUsecaseForTest(orders, payments, inventories, "order-1")
 
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
-	_ = orders.Create(order)
+	_ = orders.Create(order, nil)
 
 	out, err := uc.ConfirmPayment(ConfirmPaymentInput{OrderID: "order-1", Amount: 100, IdempotencyKey: "k-1"})
 	if err != nil {

@@ -83,7 +83,13 @@ export interface components {
     schemas: {
         CreateOrderRequest: {
             customerId: string;
-            items: components["schemas"]["OrderItem"][];
+            items: components["schemas"]["CreateOrderItem"][];
+        };
+        CreateOrderItem: {
+            sku: string;
+            quantity: number;
+            /** @description クライアントが注文時点で同意した単価（サーバ価格との照合用） */
+            unitPrice: number;
         };
         CreateOrderResponse: {
             orderId: string;
@@ -177,6 +183,15 @@ export interface operations {
             };
             /** @description Invalid request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Price conflict (quoted unit price mismatches server-side product price) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

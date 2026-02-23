@@ -49,10 +49,19 @@ type ConfirmPaymentResponse struct {
 // ConfirmPaymentResponsePaymentStatus defines model for ConfirmPaymentResponse.PaymentStatus.
 type ConfirmPaymentResponsePaymentStatus string
 
+// CreateOrderItem defines model for CreateOrderItem.
+type CreateOrderItem struct {
+	Quantity int    `json:"quantity"`
+	Sku      string `json:"sku"`
+
+	// UnitPrice クライアントが注文時点で同意した単価（サーバ価格との照合用）
+	UnitPrice int `json:"unitPrice"`
+}
+
 // CreateOrderRequest defines model for CreateOrderRequest.
 type CreateOrderRequest struct {
-	CustomerId string      `json:"customerId"`
-	Items      []OrderItem `json:"items"`
+	CustomerId string            `json:"customerId"`
+	Items      []CreateOrderItem `json:"items"`
 }
 
 // CreateOrderResponse defines model for CreateOrderResponse.

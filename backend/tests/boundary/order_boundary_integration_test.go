@@ -147,8 +147,8 @@ func TestIntegration_OrderBoundary_POST_orders_在庫確保途中失敗は補償
 	payload, _ := json.Marshal(map[string]any{
 		"customerId": "c-1",
 		"items": []map[string]any{
-			{"sku": "sku-1", "quantity": 1},
-			{"sku": "missing-sku", "quantity": 1},
+			{"sku": "sku-1", "quantity": 1, "unitPrice": 100},
+			{"sku": "missing-sku", "quantity": 1, "unitPrice": 100},
 		},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
@@ -320,7 +320,11 @@ func createOrderIntegration(t *testing.T, kit *境界統合Testkit, customerID, 
 	// 観測1: HTTPステータス(200)を検証する。
 	payload, _ := json.Marshal(map[string]any{
 		"customerId": customerID,
-		"items":      []map[string]any{{"sku": sku, "quantity": quantity}},
+		"items": []map[string]any{{
+			"sku":       sku,
+			"quantity":  quantity,
+			"unitPrice": defaultQuotedUnitPriceBySKU(sku),
+		}},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
@@ -339,6 +343,19 @@ func createOrderIntegration(t *testing.T, kit *境界統合Testkit, customerID, 
 		t.Fatalf("failed to decode create response: %v", err)
 	}
 	return res
+}
+
+func defaultQuotedUnitPriceBySKU(sku string) int {
+	switch sku {
+	case "sku-1":
+		return 100
+	case "sku-2":
+		return 80
+	case "sku-3":
+		return 50
+	default:
+		return 100
+	}
 }
 
 // confirmPaymentIntegration は POST /payments/confirm の成功系呼び出しを共通化する。
@@ -487,8 +504,8 @@ func TestIntegration_OrderBoundary_POST_orders_400_重複SKU(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
 		"customerId": "c-1",
 		"items": []map[string]any{
-			{"sku": "sku-1", "quantity": 1},
-			{"sku": "sku-1", "quantity": 2},
+			{"sku": "sku-1", "quantity": 1, "unitPrice": 100},
+			{"sku": "sku-1", "quantity": 2, "unitPrice": 100},
 		},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
@@ -502,6 +519,66 @@ func TestIntegration_OrderBoundary_POST_orders_400_重複SKU(t *testing.T) {
 	getRes := getOrderIntegration(t, kit, base.OrderID)
 	if getRes.Status != "accepted" {
 		t.Fatalf("[P5-ORD-400-09] expected base order to remain accepted, got %s", getRes.Status)
+	}
+}
+
+// このテストは POST /orders の 400（販売停止SKU）を統合境界で固定する。
+// 仕様対象: 販売停止SKUを含む注文は 400 を返し、後続状態と副作用DBを変化させない。
+// 根拠: 商品マスタの販売状態を価格決定元として扱い、停止商品の注文作成を拒否するため。
+func TestIntegration_OrderBoundary_POST_orders_400_販売停止SKU(t *testing.T) {
+	kit := new境界統合Testkit(t)
+
+	// 後続状態の観測対象として基準注文を1件作成する。
+	base := createOrderIntegration(t, kit, "c-1", "sku-2", 1)
+	before := snapshot境界統合副作用(t, kit)
+
+	if _, err := kit.DB.Exec(`UPDATE products SET is_active = FALSE WHERE sku = $1`, "sku-1"); err != nil {
+		t.Fatalf("failed to deactivate product: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = kit.DB.Exec(`UPDATE products SET is_active = TRUE WHERE sku = $1`, "sku-1")
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"customerId": "c-1",
+		"items":      []map[string]any{{"sku": "sku-1", "quantity": 1, "unitPrice": 100}},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	// 観測1/2/4: 400分類・エラー主要項目・副作用なしを共通helperで検証する。
+	assert400NoSideEffect(t, "P5-ORD-400-10", w, before, snapshot境界統合副作用(t, kit))
+	// 観測3: 後続API状態として、基準注文が不変で参照できることを検証する。
+	getRes := getOrderIntegration(t, kit, base.OrderID)
+	if getRes.Status != "accepted" {
+		t.Fatalf("[P5-ORD-400-10] expected base order to remain accepted, got %s", getRes.Status)
+	}
+}
+
+// このテストは POST /orders の 409（価格不一致）を統合境界で固定する。
+// 仕様対象: クライアント提示価格とサーバ価格が不一致の場合は 409 を返し、副作用DBを変化させない。
+// 根拠: 注文作成時点で価格差異を検出し、後段の決済失敗へ持ち越さないため。
+func TestIntegration_OrderBoundary_POST_orders_409_価格不一致(t *testing.T) {
+	kit := new境界統合Testkit(t)
+
+	base := createOrderIntegration(t, kit, "c-1", "sku-2", 1)
+	before := snapshot境界統合副作用(t, kit)
+
+	payload, _ := json.Marshal(map[string]any{
+		"customerId": "c-1",
+		"items":      []map[string]any{{"sku": "sku-1", "quantity": 1, "unitPrice": 101}},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	assertErrorNoSideEffect(t, "P5-ORD-409-01", w, before, snapshot境界統合副作用(t, kit), http.StatusConflict, "price conflict")
+	getRes := getOrderIntegration(t, kit, base.OrderID)
+	if getRes.Status != "accepted" {
+		t.Fatalf("[P5-ORD-409-01] expected base order to remain accepted, got %s", getRes.Status)
 	}
 }
 
@@ -709,7 +786,11 @@ func assertCreateOrder400Case(t *testing.T, caseID string, invalidCustomerID, in
 
 	payload, _ := json.Marshal(map[string]any{
 		"customerId": customerID,
-		"items":      []map[string]any{{"sku": sku, "quantity": quantity}},
+		"items": []map[string]any{{
+			"sku":       sku,
+			"quantity":  quantity,
+			"unitPrice": defaultQuotedUnitPriceBySKU(sku),
+		}},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")

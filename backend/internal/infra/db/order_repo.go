@@ -22,7 +22,7 @@ func NewOrderRepository(db *sql.DB) *OrderRepository {
 }
 
 // Create は注文を保存する。
-func (r *OrderRepository) Create(order domain.Order) error {
+func (r *OrderRepository) Create(order domain.Order, quotedUnitPrices map[string]int) error {
 	tx, err := r.db.BeginTx(context.Background(), nil)
 	if err != nil {
 		return err
@@ -41,12 +41,16 @@ func (r *OrderRepository) Create(order domain.Order) error {
 		return err
 	}
 	for _, item := range order.Items {
+		quotedUnitPrice, ok := quotedUnitPrices[item.SKU]
+		if !ok {
+			return errors.New("quoted unit price is required")
+		}
 		result, err := tx.Exec(`
 			INSERT INTO order_items (order_id, sku, quantity, unit_price)
-			SELECT $1, $2, $3, product_prices.unit_price
-			FROM product_prices
-			WHERE product_prices.sku = $2
-		`, order.ID, item.SKU, item.Quantity)
+			SELECT $1, $2, $3, products.unit_price
+			FROM products
+			WHERE products.sku = $2 AND products.is_active = TRUE AND products.unit_price = $4
+		`, order.ID, item.SKU, item.Quantity, quotedUnitPrice)
 		if err != nil {
 			return err
 		}
@@ -55,7 +59,19 @@ func (r *OrderRepository) Create(order domain.Order) error {
 			return err
 		}
 		if rows != 1 {
-			return errors.New("price not found")
+			var currentPrice int
+			err := tx.QueryRow(`
+				SELECT unit_price
+				FROM products
+				WHERE sku = $1 AND is_active = TRUE
+			`, item.SKU).Scan(&currentPrice)
+			if err == nil {
+				return domain.ErrPriceConflict
+			}
+			if errors.Is(err, sql.ErrNoRows) {
+				return errors.New("product not available")
+			}
+			return err
 		}
 		_, err = tx.Exec(`
 			INSERT INTO inventory_reservations (order_id, sku, quantity)

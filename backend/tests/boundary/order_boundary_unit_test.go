@@ -82,7 +82,7 @@ func TestBoundary_POST_ordersがacceptedならGET_orders_idでconfirmedを観測
 
 	payload, _ := json.Marshal(map[string]any{
 		"customerId": "c-1",
-		"items":      []map[string]any{{"sku": "sku-1", "quantity": 1}},
+		"items":      []map[string]any{{"sku": "sku-1", "quantity": 1, "unitPrice": 100}},
 	})
 	postReq := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
 	postReq.Header.Set("Content-Type", "application/json")

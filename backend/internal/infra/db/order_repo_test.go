@@ -2,11 +2,29 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
 	"order-inventory-kit/internal/domain"
 )
+
+func testQuotedUnitPrices(items []domain.OrderItem) map[string]int {
+	prices := make(map[string]int, len(items))
+	for _, item := range items {
+		switch item.SKU {
+		case "sku-1":
+			prices[item.SKU] = 100
+		case "sku-2":
+			prices[item.SKU] = 80
+		case "sku-3":
+			prices[item.SKU] = 50
+		default:
+			prices[item.SKU] = 100
+		}
+	}
+	return prices
+}
 
 // このテストは OrderRepository の永続化仕様を固定する。
 // 仕様対象: 注文の作成・取得・更新で Order の状態と明細が正しく保存されること。
@@ -20,7 +38,7 @@ func TestOrderRepository_作成と取得(t *testing.T) {
 	repo := NewOrderRepository(db)
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
 
-	if err := repo.Create(order); err != nil {
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	got, ok := repo.Get("order-1")
@@ -46,7 +64,7 @@ func TestOrderRepository_更新(t *testing.T) {
 
 	repo := NewOrderRepository(db)
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
-	_ = repo.Create(order)
+	_ = repo.Create(order, testQuotedUnitPrices(order.Items))
 
 	order.Status = domain.OrderStatusCanceled
 	if err := repo.Update(order); err != nil {
@@ -67,7 +85,7 @@ func TestOrderRepository_作成時に単価スナップショットを保存す�
 	repo := NewOrderRepository(db)
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
 
-	if err := repo.Create(order); err != nil {
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
@@ -82,9 +100,12 @@ func TestOrderRepository_作成時に単価スナップショットを保存す�
 		t.Fatalf("expected unit_price 100, got %d", savedUnitPrice.Int64)
 	}
 
-	if _, err := db.Exec(`UPDATE product_prices SET unit_price = 999 WHERE sku = $1`, "sku-1"); err != nil {
-		t.Fatalf("failed to update product price: %v", err)
+	if _, err := db.Exec(`UPDATE products SET unit_price = 999 WHERE sku = $1`, "sku-1"); err != nil {
+		t.Fatalf("failed to update product master price: %v", err)
 	}
+	defer func() {
+		_, _ = db.Exec(`UPDATE products SET unit_price = 100 WHERE sku = $1`, "sku-1")
+	}()
 
 	var snapshotPrice int
 	if err := db.QueryRow(`SELECT unit_price FROM order_items WHERE order_id = $1 AND sku = $2`, "order-1", "sku-1").Scan(&snapshotPrice); err != nil {
@@ -107,7 +128,7 @@ func TestOrderRepository_作成時に在庫引当台帳を保存する(t *testin
 		{SKU: "sku-2", Quantity: 1},
 	})
 
-	if err := repo.Create(order); err != nil {
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
@@ -153,7 +174,7 @@ func TestOrderRepository_キャンセル更新時に在庫引当台帳を解放�
 
 	repo := NewOrderRepository(db)
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
-	if err := repo.Create(order); err != nil {
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
@@ -188,8 +209,79 @@ func TestOrderRepository_価格情報が存在しないSKUを含む注文は失�
 	repo := NewOrderRepository(db)
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "missing-sku", Quantity: 1}})
 
-	if err := repo.Create(order); err == nil {
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err == nil {
 		t.Fatalf("expected create to fail when price is missing")
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM orders WHERE id = $1`, "order-1").Scan(&count); err != nil {
+		t.Fatalf("failed to count order rows: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("order row must not be persisted on failure, got %d", count)
+	}
+
+	var reservationCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM inventory_reservations WHERE order_id = $1`, "order-1").Scan(&reservationCount); err != nil {
+		t.Fatalf("failed to count reservation rows: %v", err)
+	}
+	if reservationCount != 0 {
+		t.Fatalf("reservation rows must not be persisted on failure, got %d", reservationCount)
+	}
+}
+
+func TestOrderRepository_提示価格が不一致の注文は失敗する(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ensureSchema(t, db)
+	resetTables(t, db)
+
+	repo := NewOrderRepository(db)
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+
+	err := repo.Create(order, map[string]int{"sku-1": 101})
+	if err == nil {
+		t.Fatalf("expected create to fail when quoted price mismatches")
+	}
+	if !errors.Is(err, domain.ErrPriceConflict) {
+		t.Fatalf("expected price conflict, got %v", err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM orders WHERE id = $1`, "order-1").Scan(&count); err != nil {
+		t.Fatalf("failed to count order rows: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("order row must not be persisted on failure, got %d", count)
+	}
+
+	var reservationCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM inventory_reservations WHERE order_id = $1`, "order-1").Scan(&reservationCount); err != nil {
+		t.Fatalf("failed to count reservation rows: %v", err)
+	}
+	if reservationCount != 0 {
+		t.Fatalf("reservation rows must not be persisted on failure, got %d", reservationCount)
+	}
+}
+
+func TestOrderRepository_販売停止SKUを含む注文は失敗する(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ensureSchema(t, db)
+	resetTables(t, db)
+
+	if _, err := db.Exec(`UPDATE products SET is_active = FALSE WHERE sku = $1`, "sku-1"); err != nil {
+		t.Fatalf("failed to deactivate product: %v", err)
+	}
+	defer func() {
+		_, _ = db.Exec(`UPDATE products SET is_active = TRUE WHERE sku = $1`, "sku-1")
+	}()
+
+	repo := NewOrderRepository(db)
+	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err == nil {
+		t.Fatalf("expected create to fail when product is inactive")
 	}
 
 	var count int
@@ -223,7 +315,7 @@ func TestOrderRepository_期限切れ_acceptedは引当を戻してcanceledに�
 		t.Fatalf("failed to seed inventory row: %v", err)
 	}
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
-	if err := repo.Create(order); err != nil {
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
@@ -289,7 +381,7 @@ func TestOrderRepository_期限切れ_confirmedは対象外で変更しない(t 
 		t.Fatalf("failed to seed inventory row: %v", err)
 	}
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
-	if err := repo.Create(order); err != nil {
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	if _, err := db.Exec(`
@@ -346,7 +438,7 @@ func TestOrderRepository_期限切れ_期限未到達は対象外で変更しな
 		t.Fatalf("failed to seed inventory row: %v", err)
 	}
 	order, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 2}})
-	if err := repo.Create(order); err != nil {
+	if err := repo.Create(order, testQuotedUnitPrices(order.Items)); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	if _, err := db.Exec(`
