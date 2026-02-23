@@ -20,6 +20,7 @@
 - `docs/spec.md`
 - `docs/plan.md`
 - `docs/testing-roles.md`
+- `docs/user-stories.md`
 - `docs/adr/README.md`
 - `docs/adr/0001-inventory-stock-model.md`
 - `docs/adr/0002-payment-amount-consistency.md`
