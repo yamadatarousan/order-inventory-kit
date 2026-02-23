@@ -433,6 +433,9 @@ func TestConfirmPayment_異常系_不正な入力(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error")
 	}
+	if !errors.Is(err, ErrConfirmPaymentInvalidRequest) {
+		t.Fatalf("expected ErrConfirmPaymentInvalidRequest, got %v", err)
+	}
 }
 
 func TestConfirmPayment_異常系_注文が存在しない(t *testing.T) {
@@ -444,5 +447,8 @@ func TestConfirmPayment_異常系_注文が存在しない(t *testing.T) {
 	_, err := uc.ConfirmPayment(ConfirmPaymentInput{OrderID: "missing", Amount: 100, IdempotencyKey: "k-1"})
 	if err == nil {
 		t.Fatalf("expected error")
+	}
+	if !errors.Is(err, ErrConfirmPaymentNotFound) {
+		t.Fatalf("expected ErrConfirmPaymentNotFound, got %v", err)
 	}
 }

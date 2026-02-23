@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -109,11 +110,11 @@ func (h *OrderHandler) confirmPayment(c *gin.Context) {
 	}
 	out, err := h.uc.ConfirmPayment(usecase.ConfirmPaymentInput{OrderID: req.OrderID, Amount: req.Amount, IdempotencyKey: req.IdempotencyKey})
 	if err != nil {
-		if err.Error() == "not found" {
+		if errors.Is(err, usecase.ErrConfirmPaymentNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 			return
 		}
-		if err.Error() == "amount conflict" {
+		if errors.Is(err, usecase.ErrConfirmPaymentAmountConflict) {
 			c.JSON(http.StatusConflict, gin.H{"message": "amount conflict"})
 			return
 		}

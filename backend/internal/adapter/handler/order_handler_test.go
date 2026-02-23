@@ -177,7 +177,7 @@ func TestConfirmPayment_注文が存在しない(t *testing.T) {
 		getOrderFunc:    func(id string) (domain.Order, bool) { return domain.Order{}, false },
 		cancelOrderFunc: func(id string) (domain.Order, error) { return domain.Order{}, nil },
 		confirmPaymentFunc: func(input usecase.ConfirmPaymentInput) (usecase.ConfirmPaymentOutput, error) {
-			return usecase.ConfirmPaymentOutput{}, errors.New("not found")
+			return usecase.ConfirmPaymentOutput{}, usecase.ErrConfirmPaymentNotFound
 		},
 	}
 	r := setupRouter(t, uc)
@@ -225,7 +225,7 @@ func TestConfirmPayment_金額不一致(t *testing.T) {
 		getOrderFunc:    func(id string) (domain.Order, bool) { return domain.Order{}, false },
 		cancelOrderFunc: func(id string) (domain.Order, error) { return domain.Order{}, nil },
 		confirmPaymentFunc: func(input usecase.ConfirmPaymentInput) (usecase.ConfirmPaymentOutput, error) {
-			return usecase.ConfirmPaymentOutput{}, errors.New("amount conflict")
+			return usecase.ConfirmPaymentOutput{}, usecase.ErrConfirmPaymentAmountConflict
 		},
 	}
 	r := setupRouter(t, uc)

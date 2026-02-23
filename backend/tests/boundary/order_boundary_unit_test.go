@@ -57,10 +57,10 @@ func (s *境界前提用UsecaseStub) CancelOrder(id string) (domain.Order, error
 
 func (s *境界前提用UsecaseStub) ConfirmPayment(input usecase.ConfirmPaymentInput) (usecase.ConfirmPaymentOutput, error) {
 	if input.OrderID == "" || input.IdempotencyKey == "" || input.Amount < 1 {
-		return usecase.ConfirmPaymentOutput{}, errors.New("invalid request")
+		return usecase.ConfirmPaymentOutput{}, usecase.ErrConfirmPaymentInvalidRequest
 	}
 	if _, ok := s.orders[input.OrderID]; !ok {
-		return usecase.ConfirmPaymentOutput{}, errors.New("not found")
+		return usecase.ConfirmPaymentOutput{}, usecase.ErrConfirmPaymentNotFound
 	}
 	return usecase.ConfirmPaymentOutput{
 		OrderID:       input.OrderID,

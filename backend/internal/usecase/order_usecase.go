@@ -7,6 +7,15 @@ import (
 	"order-inventory-kit/internal/domain"
 )
 
+// ConfirmPayment の公開エラー契約。
+// Handler は errors.Is でHTTP分類を判定する。
+var (
+	ErrConfirmPaymentInvalidRequest   = errors.New("invalid request")
+	ErrConfirmPaymentNotFound         = errors.New("not found")
+	ErrConfirmPaymentAmountConflict   = errors.New("amount conflict")
+	ErrConfirmPaymentAlreadyConfirmed = errors.New("already confirmed")
+)
+
 // OrderRepository は注文の永続化を抽象化する。
 type OrderRepository interface {
 	Create(order domain.Order) error
@@ -146,28 +155,28 @@ type ConfirmPaymentOutput struct {
 // ConfirmPayment は決済を確定する。
 func (u *OrderUsecase) ConfirmPayment(input ConfirmPaymentInput) (ConfirmPaymentOutput, error) {
 	if input.OrderID == "" || input.IdempotencyKey == "" || input.Amount < 1 {
-		return ConfirmPaymentOutput{}, errors.New("invalid request")
+		return ConfirmPaymentOutput{}, ErrConfirmPaymentInvalidRequest
 	}
 	order, ok := u.orders.Get(input.OrderID)
 	if !ok {
-		return ConfirmPaymentOutput{}, errors.New("not found")
+		return ConfirmPaymentOutput{}, ErrConfirmPaymentNotFound
 	}
 	if u.payments.IsConfirmed(input.OrderID, input.IdempotencyKey) {
 		confirmedAmount, found := u.payments.ConfirmedAmount(input.OrderID, input.IdempotencyKey)
 		if found && confirmedAmount != input.Amount {
-			return ConfirmPaymentOutput{}, errors.New("amount conflict")
+			return ConfirmPaymentOutput{}, ErrConfirmPaymentAmountConflict
 		}
 		return ConfirmPaymentOutput{OrderID: input.OrderID, PaymentStatus: "confirmed"}, nil
 	}
 	totalAmount, ok := u.orders.GetTotalAmount(input.OrderID)
 	if !ok {
-		return ConfirmPaymentOutput{}, errors.New("not found")
+		return ConfirmPaymentOutput{}, ErrConfirmPaymentNotFound
 	}
 	if input.Amount != totalAmount {
-		return ConfirmPaymentOutput{}, errors.New("amount conflict")
+		return ConfirmPaymentOutput{}, ErrConfirmPaymentAmountConflict
 	}
 	if order.Status == domain.OrderStatusConfirmed {
-		return ConfirmPaymentOutput{}, errors.New("already confirmed")
+		return ConfirmPaymentOutput{}, ErrConfirmPaymentAlreadyConfirmed
 	}
 	order.Status = domain.OrderStatusConfirmed
 	if err := u.orders.Update(order); err != nil {

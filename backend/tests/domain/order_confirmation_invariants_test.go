@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"errors"
 	"testing"
 
 	"order-inventory-kit/internal/domain"
@@ -225,6 +226,9 @@ func TestConfirmPayment_不変条件_合計算出に不一致の金額は失敗�
 	if err == nil {
 		t.Fatalf("amount mismatch must fail")
 	}
+	if !errors.Is(err, usecase.ErrConfirmPaymentAmountConflict) {
+		t.Fatalf("expected amount conflict, got %v", err)
+	}
 	if orders.order.Status != domain.OrderStatusAccepted {
 		t.Fatalf("status must remain accepted, got %s", orders.order.Status)
 	}
@@ -259,6 +263,9 @@ func TestConfirmPayment_不変条件_同一キー異額再送は失敗し副作�
 	})
 	if err == nil {
 		t.Fatalf("same key with different amount must fail")
+	}
+	if !errors.Is(err, usecase.ErrConfirmPaymentAmountConflict) {
+		t.Fatalf("expected amount conflict, got %v", err)
 	}
 	if orders.updateCalls != 1 {
 		t.Fatalf("order update side effect must not increase, got %d", orders.updateCalls)
