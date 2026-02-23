@@ -240,3 +240,27 @@ func TestConfirmPayment_金額不一致(t *testing.T) {
 		t.Fatalf("expected 409, got %d", w.Code)
 	}
 }
+
+func TestConfirmPayment_ユースケースが不正入力を返す(t *testing.T) {
+	uc := &stubUsecase{
+		createOrderFunc: func(input usecase.CreateOrderInput) (usecase.CreateOrderOutput, error) {
+			return usecase.CreateOrderOutput{}, nil
+		},
+		getOrderFunc:    func(id string) (domain.Order, bool) { return domain.Order{}, false },
+		cancelOrderFunc: func(id string) (domain.Order, error) { return domain.Order{}, nil },
+		confirmPaymentFunc: func(input usecase.ConfirmPaymentInput) (usecase.ConfirmPaymentOutput, error) {
+			return usecase.ConfirmPaymentOutput{}, usecase.ErrConfirmPaymentInvalidRequest
+		},
+	}
+	r := setupRouter(t, uc)
+
+	payload, _ := json.Marshal(map[string]any{"orderId": "order-1", "amount": 100, "idempotencyKey": "k-1"})
+	req := httptest.NewRequest(http.MethodPost, "/payments/confirm", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}

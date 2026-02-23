@@ -110,16 +110,20 @@ func (h *OrderHandler) confirmPayment(c *gin.Context) {
 	}
 	out, err := h.uc.ConfirmPayment(usecase.ConfirmPaymentInput{OrderID: req.OrderID, Amount: req.Amount, IdempotencyKey: req.IdempotencyKey})
 	if err != nil {
-		if errors.Is(err, usecase.ErrConfirmPaymentNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			return
-		}
-		if errors.Is(err, usecase.ErrConfirmPaymentAmountConflict) {
-			c.JSON(http.StatusConflict, gin.H{"message": "amount conflict"})
-			return
-		}
-		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid request"})
+		status, message := classifyConfirmPaymentError(err)
+		c.JSON(status, gin.H{"message": message})
 		return
 	}
 	c.JSON(http.StatusOK, confirmPaymentResponse{OrderID: out.OrderID, PaymentStatus: out.PaymentStatus})
+}
+
+func classifyConfirmPaymentError(err error) (int, string) {
+	switch {
+	case errors.Is(err, usecase.ErrConfirmPaymentNotFound):
+		return http.StatusNotFound, "not found"
+	case errors.Is(err, usecase.ErrConfirmPaymentAmountConflict):
+		return http.StatusConflict, "amount conflict"
+	default:
+		return http.StatusBadRequest, "invalid request"
+	}
 }
