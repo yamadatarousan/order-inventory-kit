@@ -103,6 +103,10 @@
 | P5-ORD-400-07 | POST /orders | customerId+sku+quantity無効 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_全項目無効` | 完了 |
 | P5-ORD-400-08 | POST /orders | items空 | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_items空` | 完了 |
 | P5-ORD-400-09 | POST /orders | 重複SKU | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_重複SKU` | 完了 |
+| P5-ORD-400-10 | POST /orders | 未存在customerId | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_未存在customerId` | 完了 |
+| P5-ORD-400-11 | POST /orders | 無効customerId（is_active=false） | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_無効customerId` | 完了 |
+| P5-ORD-400-12 | POST /orders | 販売停止SKU（is_active=false） | 400 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_400_販売停止SKU` | 完了 |
+| P5-ORD-409-01 | POST /orders | 価格不一致（unitPrice不一致） | 409 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_POST_orders_409_価格不一致` | 完了 |
 | P5-GET-200-01 | GET /orders/{id} | 既存ID | 200 | `id/customerId/status/items`、前段POSTとの同値、DB読取整合 | `TestIntegration_OrderBoundary_GET_orders_id_200_既存IDは主要項目を返す` | 完了 |
 | P5-GET-404-01 | GET /orders/{id} | 未存在ID | 404 | エラー応答、後続状態なし、DB副作用なし | `TestIntegration_OrderBoundary_404の意味_未存在注文参照は404を返す` | 完了 |
 | P5-GET-CID-01 | GET /orders/{id} | customerId同値観測 | 200 | POST入力の`customerId`とGET応答の`customerId`同値、後続状態整合、DB読取整合 | `TestIntegration_OrderBoundary_customerId同値観測_POSTとGETで一致する` | 完了 |
@@ -133,7 +137,7 @@
   - 実装上の関数名を抽出:
     - `rg -o '^func (TestIntegration_[^(]+)' backend/tests/boundary/order_boundary_integration_test.go -r '$1' | sort -u`
   - `comm` で差分を確認し、片側だけに存在する関数を欠落ケースとして扱う
-- 現在の可視化結果（2026-02-16）:
+- 現在の可視化結果（2026-02-23）:
   - `MISSING_IN_TESTS`: なし
   - `MISSING_IN_MATRIX`: なし
 

@@ -364,7 +364,7 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
   - [x] Refactor実施後の再実行通過を確認する（対象差分のテストと `go test ./... -p 1 -count=1` を通す）
   - [x] CIの通し順で標準モデル移行後の回帰確認（回帰テスト）を確認する（差分→生成→構造→不変条件→境界一貫性）
 
-- [ ] 補完目的: 価格決定元の運用主体を商品マスタに統合する（`product_prices` 暫定運用の解消）
+- [x] 補完目的: 価格決定元の運用主体を商品マスタに統合する（`product_prices` 暫定運用の解消）
   - [x] タスク1: 商品マスタの最小項目と価格決定ルールを確定し反映する（Red: 未存在SKU/販売停止SKUの失敗を不変条件・境界統合で先行追加 / Green: `products` 相当テーブル追加・seed投入・注文保存時の参照元切替を実装 / Refactor: 命名・責務整理と再実行通過）
   - [x] タスク2: 価格スナップショットの不変条件を固定する（Red: 商品マスタ価格変更後も既存注文明細 `unit_price` 不変の契約テストを先行追加 / Green: 保存・取得実装を追従 / Refactor: 重複クエリ整理と再実行通過）
   - [x] タスク3: `product_prices` 暫定運用を解消する（Red: 旧参照経路が使われると失敗する回帰テストを先行追加 / Green: データ移行と参照コード一本化を実装 / Refactor: 不要コード削除と運用手順更新）
@@ -396,12 +396,12 @@ GinでAPIの最小動作を作り、固定化条件の受け皿を用意する
 - `docs/testing-roles.md` の「Phase 5 網羅マトリクス」（対象API別ケース一覧と対応するテスト関数）
 
 #### セルフチェック
-- 契約:
-- 差分:
-- 生成:
-- 構造:
-- 不変条件:
-- 境界観測一貫性:
+- 契約: `contracts/openapi.yaml` を単一参照点として維持し、`./tools/openapi/diff.sh` 通過
+- 差分: 破壊的変更は `contracts/migrations/2026-02-16-price-model-breaking.yaml` で移行定義を追加済み
+- 生成: `./tools/openapi/generate.sh --check` 通過（Go/TS 生成物整合あり）
+- 構造: `./tools/arch/check.sh` 通過（依存方向/越境ルール違反なし）
+- 不変条件: `cd backend && go test ./tests/domain/...` 通過
+- 境界観測一貫性: `cd backend && go test ./tests/boundary/...` / `go test ./tests/boundary -run Integration -count=1` 通過、網羅マトリクスと統合テスト関数の対応差分なし
 
 ---
 
