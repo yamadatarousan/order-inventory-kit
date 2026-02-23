@@ -10,7 +10,8 @@ import (
 // ConfirmPayment の公開エラー契約。
 // Handler は errors.Is でHTTP分類を判定する。
 var (
-	ErrCreateOrderPriceConflict = errors.New("price conflict")
+	ErrCreateOrderPriceConflict   = errors.New("price conflict")
+	ErrCreateOrderInvalidCustomer = errors.New("invalid customer")
 
 	ErrConfirmPaymentInvalidRequest   = errors.New("invalid request")
 	ErrConfirmPaymentNotFound         = errors.New("not found")
@@ -39,11 +40,17 @@ type OrderInventoryRepository interface {
 	Release(sku string, quantity int) (domain.Inventory, error)
 }
 
+// CustomerRepository は顧客マスタ参照を抽象化する。
+type CustomerRepository interface {
+	IsActive(customerID string) (bool, error)
+}
+
 // OrderUsecase は注文まわりのユースケースを提供する。
 type OrderUsecase struct {
 	orders      OrderRepository
 	payments    PaymentRepository
 	inventories OrderInventoryRepository
+	customers   CustomerRepository
 	idGen       func() string
 }
 
@@ -52,9 +59,16 @@ func NewOrderUsecase(
 	orders OrderRepository,
 	payments PaymentRepository,
 	inventories OrderInventoryRepository,
+	customers CustomerRepository,
 	idGen func() string,
 ) *OrderUsecase {
-	return &OrderUsecase{orders: orders, payments: payments, inventories: inventories, idGen: idGen}
+	return &OrderUsecase{
+		orders:      orders,
+		payments:    payments,
+		inventories: inventories,
+		customers:   customers,
+		idGen:       idGen,
+	}
 }
 
 // CreateOrderInput は注文作成の入力。
@@ -76,10 +90,20 @@ func (u *OrderUsecase) CreateOrder(input CreateOrderInput) (CreateOrderOutput, e
 	if u.inventories == nil {
 		return CreateOrderOutput{}, errors.New("inventory repository is required")
 	}
+	if u.customers == nil {
+		return CreateOrderOutput{}, errors.New("customer repository is required")
+	}
 
 	order, err := domain.NewOrder(u.idGen(), input.CustomerID, input.Items)
 	if err != nil {
 		return CreateOrderOutput{}, err
+	}
+	isActive, err := u.customers.IsActive(input.CustomerID)
+	if err != nil {
+		return CreateOrderOutput{}, err
+	}
+	if !isActive {
+		return CreateOrderOutput{}, ErrCreateOrderInvalidCustomer
 	}
 
 	reservedItems := make([]domain.OrderItem, 0, len(order.Items))

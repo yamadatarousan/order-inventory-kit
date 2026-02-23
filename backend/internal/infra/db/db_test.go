@@ -81,6 +81,11 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  currency TEXT NOT NULL CHECK (currency = 'JPY'),
 		  is_active BOOLEAN NOT NULL DEFAULT TRUE
 		);
+		CREATE TABLE IF NOT EXISTS customers (
+		  id TEXT PRIMARY KEY,
+		  name TEXT NOT NULL,
+		  is_active BOOLEAN NOT NULL DEFAULT TRUE
+		);
 		CREATE TABLE IF NOT EXISTS inventory (
 		  sku TEXT PRIMARY KEY,
 		  quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
@@ -125,6 +130,14 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  name = EXCLUDED.name,
 		  unit_price = EXCLUDED.unit_price,
 		  currency = EXCLUDED.currency,
+		  is_active = EXCLUDED.is_active;
+		INSERT INTO customers (id, name, is_active) VALUES
+		  ('c-1', '顧客c-1', TRUE),
+		  ('c-2', '顧客c-2', TRUE),
+		  ('unknown', '未設定顧客', FALSE)
+		ON CONFLICT (id) DO UPDATE
+		SET
+		  name = EXCLUDED.name,
 		  is_active = EXCLUDED.is_active;
 		ALTER TABLE orders
 		  ADD COLUMN IF NOT EXISTS customer_id TEXT;

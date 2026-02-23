@@ -37,13 +37,14 @@ func new境界統合Testkit(t *testing.T) *境界統合Testkit {
 	orderRepo := dbinfra.NewOrderRepository(db)
 	paymentRepo := dbinfra.NewPaymentRepository(db)
 	inventoryRepo := dbinfra.NewInventoryRepository(db)
+	customerRepo := dbinfra.NewCustomerRepository(db)
 
 	idGen := new固定IDGenerator(
 		"integration-order-1",
 		"integration-order-2",
 		"integration-order-3",
 	)
-	uc := usecase.NewOrderUsecase(orderRepo, paymentRepo, inventoryRepo, idGen)
+	uc := usecase.NewOrderUsecase(orderRepo, paymentRepo, inventoryRepo, customerRepo, idGen)
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()

@@ -116,7 +116,8 @@ func main() {
 	orderRepo := infra.NewOrderRepository(db)
 	paymentRepo := infra.NewPaymentRepository(db)
 	inventoryRepo := infra.NewInventoryRepository(db)
-	uc := usecase.NewOrderUsecase(orderRepo, paymentRepo, inventoryRepo, newOrderID)
+	customerRepo := infra.NewCustomerRepository(db)
+	uc := usecase.NewOrderUsecase(orderRepo, paymentRepo, inventoryRepo, customerRepo, newOrderID)
 	router := newRouter(uc)
 	startOrderExpirationWorker(orderRepo, cfg.OrderExpirationInterval, cfg.OrderExpirationTTL)
 

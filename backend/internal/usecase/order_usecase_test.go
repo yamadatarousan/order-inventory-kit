@@ -114,6 +114,27 @@ type memoryOrderInventoryRepo struct {
 	failRelease  func(sku string, quantity int, call int) error
 }
 
+type memoryCustomerRepo struct {
+	inactive map[string]bool
+	failErr  error
+}
+
+func newMemoryCustomerRepo() *memoryCustomerRepo {
+	return &memoryCustomerRepo{
+		inactive: make(map[string]bool),
+	}
+}
+
+func (r *memoryCustomerRepo) IsActive(customerID string) (bool, error) {
+	if r.failErr != nil {
+		return false, r.failErr
+	}
+	if r.inactive[customerID] {
+		return false, nil
+	}
+	return true, nil
+}
+
 func newMemoryOrderInventoryRepo() *memoryOrderInventoryRepo {
 	return &memoryOrderInventoryRepo{items: make(map[string]domain.Inventory)}
 }
@@ -164,7 +185,8 @@ func seedInventory(t *testing.T, inventories *memoryOrderInventoryRepo, sku stri
 }
 
 func newOrderUsecaseForTest(orders *memoryOrderRepo, payments *memoryPaymentRepo, inventories *memoryOrderInventoryRepo, id string) *OrderUsecase {
-	return NewOrderUsecase(orders, payments, inventories, func() string { return id })
+	customers := newMemoryCustomerRepo()
+	return NewOrderUsecase(orders, payments, inventories, customers, func() string { return id })
 }
 
 func TestCreateOrder_正常系_在庫確保と注文保存が成功する(t *testing.T) {

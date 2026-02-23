@@ -158,6 +158,8 @@ func classifyCreateOrderError(err error) (int, string) {
 	switch {
 	case errors.Is(err, usecase.ErrCreateOrderPriceConflict):
 		return http.StatusConflict, "price conflict"
+	case errors.Is(err, usecase.ErrCreateOrderInvalidCustomer):
+		return http.StatusBadRequest, "invalid request"
 	default:
 		return http.StatusBadRequest, "invalid request"
 	}

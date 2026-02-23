@@ -210,6 +210,14 @@ func TestIntegration_OrderBoundary_GET_orders_id_200_既存IDは主要項目を�
 func TestIntegration_OrderBoundary_customerId同値観測_POSTとGETで一致する(t *testing.T) {
 	kit := new境界統合Testkit(t)
 	inputCustomerID := "customer-xyz-01"
+	if _, err := kit.DB.Exec(`
+		INSERT INTO customers (id, name, is_active)
+		VALUES ($1, $2, TRUE)
+		ON CONFLICT (id) DO UPDATE
+		SET name = EXCLUDED.name, is_active = EXCLUDED.is_active
+	`, inputCustomerID, "顧客 customer-xyz-01"); err != nil {
+		t.Fatalf("failed to seed customer for equivalence test: %v", err)
+	}
 
 	// 観測1/2: createOrderIntegration が HTTP 200 と主要項目(orderId/status)を検証する。
 	createRes := createOrderIntegration(t, kit, inputCustomerID, "sku-1", 1)
@@ -469,6 +477,18 @@ func TestIntegration_OrderBoundary_POST_orders_400_skuとquantity無効(t *testi
 func TestIntegration_OrderBoundary_POST_orders_400_全項目無効(t *testing.T) {
 	// 観測1/2/3/4: assertCreateOrder400Case で 400分類・エラー主要項目・後続API状態・副作用DBを検証する。
 	assertCreateOrder400Case(t, "P5-ORD-400-07", true, true, true)
+}
+
+// このテストは POST /orders の 400（未存在customerId）を統合境界で固定する。
+func TestIntegration_OrderBoundary_POST_orders_400_未存在customerId(t *testing.T) {
+	// 観測1/2/3/4: assertCreateOrderCustomerReference400Case で 400分類・エラー主要項目・後続API状態・副作用DBを検証する。
+	assertCreateOrderCustomerReference400Case(t, "P5-ORD-CUST-400-01", "missing-customer", false)
+}
+
+// このテストは POST /orders の 400（無効customerId）を統合境界で固定する。
+func TestIntegration_OrderBoundary_POST_orders_400_無効customerId(t *testing.T) {
+	// 観測1/2/3/4: assertCreateOrderCustomerReference400Case で 400分類・エラー主要項目・後続API状態・副作用DBを検証する。
+	assertCreateOrderCustomerReference400Case(t, "P5-ORD-CUST-400-02", "inactive-customer", true)
 }
 
 // このテストは POST /orders の 400（items空）を統合境界で固定する。
@@ -790,6 +810,46 @@ func assertCreateOrder400Case(t *testing.T, caseID string, invalidCustomerID, in
 			"sku":       sku,
 			"quantity":  quantity,
 			"unitPrice": defaultQuotedUnitPriceBySKU(sku),
+		}},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	kit.Router.ServeHTTP(w, req)
+
+	// 観測1/2/4: 400分類・エラー主要項目・副作用なしを検証する。
+	assert400NoSideEffect(t, caseID, w, before, snapshot境界統合副作用(t, kit))
+	// 観測3: 後続API状態として、既存注文が不変で参照できることを検証する。
+	getRes := getOrderIntegration(t, kit, base.OrderID)
+	if getRes.Status != "accepted" {
+		t.Fatalf("[%s] expected base order to remain accepted, got %s", caseID, getRes.Status)
+	}
+}
+
+// assertCreateOrderCustomerReference400Case は POST /orders の顧客参照不整合を共通検証する。
+// 400分類、エラーメッセージ、副作用なし、既存注文の後続状態不変を一括で固定する。
+func assertCreateOrderCustomerReference400Case(t *testing.T, caseID string, customerID string, deactivateCustomer bool) {
+	t.Helper()
+
+	kit := new境界統合Testkit(t)
+	base := createOrderIntegration(t, kit, "c-1", "sku-1", 1)
+
+	if deactivateCustomer {
+		if _, err := kit.DB.Exec(`UPDATE customers SET is_active = FALSE WHERE id = $1`, customerID); err != nil {
+			t.Fatalf("[%s] failed to deactivate customer: %v", caseID, err)
+		}
+		t.Cleanup(func() {
+			_, _ = kit.DB.Exec(`UPDATE customers SET is_active = TRUE WHERE id = $1`, customerID)
+		})
+	}
+
+	before := snapshot境界統合副作用(t, kit)
+	payload, _ := json.Marshal(map[string]any{
+		"customerId": customerID,
+		"items": []map[string]any{{
+			"sku":       "sku-1",
+			"quantity":  1,
+			"unitPrice": 100,
 		}},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(payload))
