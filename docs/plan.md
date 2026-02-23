@@ -470,10 +470,34 @@ OpenAPI生成クライアントを用いてUIから操作できる状態にす�
 - [x] タスク2: 本実装レーンの注文作成を実装する（`US-ORD-01`）（Red: 入力/送信/`400/409` 表示テストを先行追加 / Green: `POST /orders` 接続と成功導線を実装 / Refactor: フォーム責務を整理して再実行通過）
 - [x] タスク3: 本実装レーンの注文参照・キャンセル・決済確定を実装する（`US-ORD-02` `US-ORD-03` `US-PAY-01`）（Red: 詳細表示/キャンセル/決済確定のUIテストを先行追加 / Green: `GET /orders/{id}` `POST /orders/{id}/cancel` `POST /payments/confirm` を接続 / Refactor: 状態管理とAPI呼び出し責務を整理して再実行通過）
 - [x] タスク4: 仮実装レーンの画面をモックで先行実装する（`US-PROD-*` `US-CART-*` `US-CHK-03` `US-HIS-*`）（Red: 受け入れ条件のUI観測テストを先行追加 / Green: fixture/MSWで画面導線を実装 / Refactor: モック生成と画面ロジックの重複を整理）
-- [ ] タスク5: 仮実装レーンの差し替え契約を明記する（Red: 差し替え先が曖昧な状態を確認 / Green: 各画面ごとに差し替え先API・削除条件・移行先フェーズを `docs/plan.md` に記載 / Refactor: 依存順を整理）
+- [x] タスク5: 仮実装レーンの差し替え契約を明記する（Red: 差し替え先が曖昧な状態を確認 / Green: 各画面ごとに差し替え先API・削除条件・移行先フェーズを `docs/plan.md` に記載 / Refactor: 依存順を整理）
 - [ ] タスク6: 生成クライアント接続を固定する（Red: 生成差分検出を確認 / Green: `frontend/src/api/` 再生成と呼び出し更新 / Refactor: API層の集約とCI回帰確認）
 - [ ] タスク7: UIスタイル基盤を固定する（Red: 画面ごとにスタイル実装が分散して運用が揺れる状態を確認 / Green: Tailwind採用可否を決定し、採用時は導入・非採用時はCSS方針を明文化して実装へ反映 / Refactor: デザイントークン・共通スタイル責務を整理）
 - [x] タスク8: CIで frontend の lint/test/build を必須化する（Red: 未実行でも統合できる状態を確認 / Green: `.github/workflows/ci.yml` に `npm ci` `npm run lint` `npm test` `npm run build` を追加 / Refactor: ステップ順とコメントを整理）
+
+#### タスク5 Red確認（差し替え先の曖昧さ）
+- `frontend/src/features/mock-lane/MockLanePanels.tsx` には仮実装画面を追加済みだが、どのAPIへ差し替えるかの対応表が未定義
+- モック削除条件が未定義のため、仮実装が恒久化するリスクがある
+- どの順にバックエンド実装を進めれば差し替えできるか（依存順）が未定義
+
+#### タスク5 Green（仮実装差し替え契約）
+| ストーリーID | 仮実装対象（現在） | 差し替え先API（未実装） | 削除条件 | 移行先フェーズ/タスクID |
+|---|---|---|---|---|
+| `US-PROD-01` | 商品一覧（販売中のみ表示）`MockLanePanels` | `GET /products`（`sku/name/unit_price/currency/is_active`） | `GET /products` が契約化・実装され、frontend統合テストが通過 | Phase 6 後続 `P6-BE-01` |
+| `US-PROD-02` | 商品詳細（存在しないSKUは404表示）`MockLanePanels` | `GET /products/{sku}` | `GET /products/{sku}` の `200/404` が契約/実装/テストで固定 | Phase 6 後続 `P6-BE-02` |
+| `US-PROD-03` | 販売停止商品を購入導線に出さない判定 `MockLanePanels` | `GET /products` の `is_active` と在庫表示項目（例: `available`） | 商品一覧側で販売可否/在庫感を返却し、仮判定ロジックを削除 | Phase 6 後続 `P6-BE-03` |
+| `US-CART-01` | カート追加（`sku/quantity`）`MockLanePanels` | `POST /cart/items` | `POST /cart/items` の `200/400` を使ってUIテストが通過 | Phase 6 後続 `P6-BE-04` |
+| `US-CART-02` | カート内容/合計表示 `MockLanePanels` | `GET /cart`（明細 + サーバ算出合計） | `GET /cart` を表示基準に切替え、合計モック計算を削除 | Phase 6 後続 `P6-BE-05` |
+| `US-CART-03` / `US-CART-04` | 数量更新/商品削除 `MockLanePanels` | `PATCH /cart/items/{sku}` / `DELETE /cart/items/{sku}` | 更新/削除系APIを接続し、ローカル配列更新ロジックを削除 | Phase 6 後続 `P6-BE-06` |
+| `US-CHK-03` | 最終確認（小計/送料/手数料/合計）`MockLanePanels` | `GET /checkout/summary` | 最終確認値を `GET /checkout/summary` の値へ切替え | Phase 6 後続 `P6-BE-07` |
+| `US-HIS-01` / `US-HIS-02` | 履歴一覧/履歴詳細 `MockLanePanels` | `GET /history?customerId=...` / `GET /history/{orderId}` | 履歴APIの `200/404` を接続し、fixture履歴データを削除 | Phase 6 後続 `P6-BE-08` |
+
+#### タスク5 Refactor（依存順）
+1. `P6-BE-01` `P6-BE-02` `P6-BE-03`（商品閲覧系）
+2. `P6-BE-04` `P6-BE-05` `P6-BE-06`（カート系）
+3. `P6-BE-07`（最終確認）
+4. `P6-BE-08`（履歴系）
+5. frontend 側差し替え（`MockLanePanels` の該当ロジック削除と実API接続）
 
 #### 成果物
 - `frontend/src/app/`
