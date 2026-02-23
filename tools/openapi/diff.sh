@@ -15,7 +15,9 @@ resolve_base_spec() {
   local ref="${1:-origin/main}"
   local tmp
   # gitの指定リビジョンから contracts/openapi.yaml を取得する
-  tmp="$(mktemp /tmp/openapi_base.XXXXXX.yaml)"
+  # BSD/GNU の両方で動くよう、拡張子付きテンプレートは使わない。
+  # Docker実行時に参照できるよう /tmp 配下に固定する。
+  tmp="$(mktemp /tmp/openapi_base.XXXXXX)"
   if git show "${ref}:contracts/openapi.yaml" > "${tmp}" 2>/dev/null; then
     BASE_REF="${ref}"
     echo "${tmp}"

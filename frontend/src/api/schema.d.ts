@@ -88,7 +88,7 @@ export interface components {
         CreateOrderItem: {
             sku: string;
             quantity: number;
-            /** @description クライアントが注文時点で同意した単価（サーバ価格との照合用） */
+            /** @description クライアントが注文時点で同意した単価（商品マスタ価格との照合用） */
             unitPrice: number;
         };
         CreateOrderResponse: {
@@ -128,7 +128,7 @@ export interface components {
         OrderItem: {
             sku: string;
             quantity: number;
-            /** @description 商品単価（サーバ側価格情報を決定元に設定） */
+            /** @description 商品単価（商品マスタ products を決定元に設定） */
             unitPrice?: number;
             /** @description 明細金額（unitPrice * quantity） */
             lineAmount?: number;

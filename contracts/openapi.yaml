@@ -176,7 +176,7 @@ components:
         unitPrice:
           type: integer
           minimum: 0
-          description: クライアントが注文時点で同意した単価（サーバ価格との照合用）
+          description: クライアントが注文時点で同意した単価（商品マスタ価格との照合用）
     CreateOrderResponse:
       type: object
       required:
@@ -262,7 +262,7 @@ components:
         unitPrice:
           type: integer
           minimum: 0
-          description: 商品単価（サーバ側価格情報を決定元に設定）
+          description: 商品単価（商品マスタ products を決定元に設定）
         lineAmount:
           type: integer
           minimum: 0

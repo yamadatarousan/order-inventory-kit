@@ -54,7 +54,7 @@ type CreateOrderItem struct {
 	Quantity int    `json:"quantity"`
 	Sku      string `json:"sku"`
 
-	// UnitPrice クライアントが注文時点で同意した単価（サーバ価格との照合用）
+	// UnitPrice クライアントが注文時点で同意した単価（商品マスタ価格との照合用）
 	UnitPrice int `json:"unitPrice"`
 }
 
@@ -106,7 +106,7 @@ type OrderItem struct {
 	Quantity   int    `json:"quantity"`
 	Sku        string `json:"sku"`
 
-	// UnitPrice 商品単価（サーバ側価格情報を決定元に設定）
+	// UnitPrice 商品単価（商品マスタ products を決定元に設定）
 	UnitPrice *int `json:"unitPrice,omitempty"`
 }
 
