@@ -44,7 +44,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CreateOrderResponse'
         '400':
-          description: Invalid request
+          description: Invalid request (validation error, unknown customer, or inactive customer)
           content:
             application/json:
               schema:
@@ -156,6 +156,7 @@ components:
       properties:
         customerId:
           type: string
+          description: 顧客ID（`customers.id` の有効顧客のみ受け付ける）
         items:
           type: array
           minItems: 1

@@ -60,6 +60,7 @@ type CreateOrderItem struct {
 
 // CreateOrderRequest defines model for CreateOrderRequest.
 type CreateOrderRequest struct {
+	// CustomerId 顧客ID（`customers.id` の有効顧客のみ受け付ける）
 	CustomerId string            `json:"customerId"`
 	Items      []CreateOrderItem `json:"items"`
 }

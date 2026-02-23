@@ -82,6 +82,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         CreateOrderRequest: {
+            /** @description 顧客ID（`customers.id` の有効顧客のみ受け付ける） */
             customerId: string;
             items: components["schemas"]["CreateOrderItem"][];
         };
@@ -181,7 +182,7 @@ export interface operations {
                     "application/json": components["schemas"]["CreateOrderResponse"];
                 };
             };
-            /** @description Invalid request */
+            /** @description Invalid request (validation error, unknown customer, or inactive customer) */
             400: {
                 headers: {
                     [name: string]: unknown;

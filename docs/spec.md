@@ -125,6 +125,22 @@
 - `order_items.sku` に対応する `products` が無い場合は、そのSKUを含む注文を削除する
 - 削除は注文単位で行い、`orders` / `order_items` / `payments` の整合を崩さない
 
+## 顧客データ運用手順（`customers` マスタ）
+- 目的:
+  - `orders.customer_id` の孤立を防ぎ、注文作成時の顧客参照整合を維持する
+- 参照整合ルール:
+  - `POST /orders` の `customerId` は `customers.id` に存在し、かつ `is_active = true` の顧客のみ受け付ける
+  - 未存在または無効顧客は `400` として扱う
+- 追加/更新:
+  - 顧客追加時は `customers(id, name, is_active)` を投入し、`id` を注文入力の `customerId` と一致させる
+  - 利用停止は物理削除ではなく `is_active = false` で運用する
+- 削除ポリシー:
+  - `orders.customer_id` にFKを設定しているため、参照中顧客の物理削除は行わない
+  - 既存注文履歴を保持するため、顧客は無効化で扱う
+- 初期データ:
+  - `backend/migrations/0010_add_customers_master.up.sql` で `c-1` / `c-2` / `unknown` を投入する
+  - `unknown` は移行用の退避IDとして扱い、新規注文の入力値としては受け付けない
+
 ## テスト分類（固定）
 - 不変条件テスト: `backend/tests/domain/`
 - 境界一貫性統合テスト/境界単体テスト: `backend/tests/boundary/`
