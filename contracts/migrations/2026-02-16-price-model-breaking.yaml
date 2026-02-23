@@ -22,7 +22,7 @@ migration_steps:
   - "Step 2: クライアント実装で 409 ハンドリングと金額表示ロジックを追加する"
   - "Step 3: 後方互換期間中に金額項目依存の画面/API連携を段階的に切り替える"
   - "Step 4: 互換期限後に金額項目を必須化し、旧前提（金額項目なし）を廃止する"
-  - "Step 5: 既存の `order_items.unit_price` を `product_prices.unit_price` で機械的バックフィルし、NULL欠損を残さない"
+  - "Step 5: 既存の `order_items.unit_price` を `products.unit_price` で機械的バックフィルし、NULL欠損を残さない"
 notes:
   - "2026-02-16 時点では後方互換のため、追加した金額項目は optional のまま運用する"
   - "破壊的変更の最終適用（required化）は、クライアント移行完了後に別PRで実施する"

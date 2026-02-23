@@ -74,11 +74,6 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  DROP CONSTRAINT IF EXISTS payments_amount_positive_or_null;
 		ALTER TABLE payments
 		  ADD CONSTRAINT payments_amount_positive_or_null CHECK (amount IS NULL OR amount >= 1);
-		CREATE TABLE IF NOT EXISTS product_prices (
-		  sku TEXT PRIMARY KEY,
-		  unit_price INTEGER NOT NULL CHECK (unit_price >= 0),
-		  currency TEXT NOT NULL CHECK (currency = 'JPY')
-		);
 		CREATE TABLE IF NOT EXISTS products (
 		  sku TEXT PRIMARY KEY,
 		  name TEXT NOT NULL,
@@ -120,12 +115,7 @@ func ensureSchema(t *testing.T, db *sql.DB) {
 		  ALTER COLUMN on_hand SET DEFAULT 0,
 		  ALTER COLUMN reserved SET NOT NULL,
 		  ALTER COLUMN reserved SET DEFAULT 0;
-		INSERT INTO product_prices (sku, unit_price, currency) VALUES
-		  ('sku-1', 100, 'JPY'),
-		  ('sku-2', 80, 'JPY'),
-		  ('sku-3', 50, 'JPY')
-		ON CONFLICT (sku) DO UPDATE
-		SET unit_price = EXCLUDED.unit_price, currency = EXCLUDED.currency;
+		DROP TABLE IF EXISTS product_prices;
 		INSERT INTO products (sku, name, unit_price, currency, is_active) VALUES
 		  ('sku-1', '商品sku-1', 100, 'JPY', TRUE),
 		  ('sku-2', '商品sku-2', 80, 'JPY', TRUE),
