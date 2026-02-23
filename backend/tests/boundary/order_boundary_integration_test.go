@@ -300,29 +300,12 @@ func TestIntegration_OrderBoundary_404の意味_未存在注文参照は404を�
 	req := httptest.NewRequest(http.MethodGet, "/orders/missing-order", nil)
 	w := httptest.NewRecorder()
 	kit.Router.ServeHTTP(w, req)
-	// 観測1: HTTPステータス分類(404)を検証する。
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404 on missing order get, got %d body=%s", w.Code, strings.TrimSpace(w.Body.String()))
-	}
-	var body struct {
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-	// 観測2: 主要レスポンス項目(message)を検証する。
-	if body.Message != "not found" {
-		t.Fatalf("expected message=not found, got %s", body.Message)
-	}
+	// 観測1/2/4: 404分類・エラー主要項目・副作用なしを共通helperで検証する。
+	assert404NoSideEffect(t, "P5-ORD-404-01", w, before, snapshot境界統合副作用(t, kit))
 	// 観測3: 後続API状態として、既存注文は引き続き参照できることを確認する。
 	getRes := getOrderIntegration(t, kit, base.OrderID)
 	if getRes.Status != "accepted" {
 		t.Fatalf("expected accepted on existing order after missing get, got %s", getRes.Status)
-	}
-	// 観測4: 副作用DBが不変であることを検証する。
-	after := snapshot境界統合副作用(t, kit)
-	if before != after {
-		t.Fatalf("missing get must not mutate db side effects, before=%+v after=%+v", before, after)
 	}
 }
 
@@ -580,26 +563,8 @@ func TestIntegration_OrderBoundary_POST_payments_confirm_404_未存在orderId(t 
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	kit.Router.ServeHTTP(w, req)
-	// 観測1: HTTPステータス分類(404)を検証する。
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("[P5-PAY-404-01] expected 404, got %d body=%s", w.Code, strings.TrimSpace(w.Body.String()))
-	}
-	// 観測2: 主要レスポンス項目(message)を検証する。
-	var body struct {
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("[P5-PAY-404-01] failed to decode response: %v", err)
-	}
-	if body.Message != "not found" {
-		t.Fatalf("[P5-PAY-404-01] expected message=not found, got %s", body.Message)
-	}
-
-	// 観測4: 副作用DBが増えていないことを検証する。
-	after := snapshot境界統合副作用(t, kit)
-	if before != after {
-		t.Fatalf("[P5-PAY-404-01] expected no db side effects, before=%+v after=%+v", before, after)
-	}
+	// 観測1/2/4: 404分類・エラー主要項目・副作用なしを共通helperで検証する。
+	assert404NoSideEffect(t, "P5-PAY-404-01", w, before, snapshot境界統合副作用(t, kit))
 	// 観測3: 後続APIで既存注文状態が不変であることを検証する。
 	order := getOrderIntegration(t, kit, createRes.OrderID)
 	if order.Status != "accepted" {
@@ -805,9 +770,36 @@ func assertConfirmPayment400Case(t *testing.T, caseID string, invalidOrderID, in
 // invalid request の返却と、副作用DBスナップショット不変を固定する。
 func assert400NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseRecorder, before, after 境界統合DB副作用スナップショット) {
 	t.Helper()
+	assertErrorNoSideEffect(t, caseID, w, before, after, http.StatusBadRequest, "invalid request")
+}
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("[%s] expected 400, got %d body=%s", caseID, w.Code, strings.TrimSpace(w.Body.String()))
+// assert404NoSideEffect は 404エラー時の共通契約を検証する。
+// not found の返却と、副作用DBスナップショット不変を固定する。
+func assert404NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseRecorder, before, after 境界統合DB副作用スナップショット) {
+	t.Helper()
+	assertErrorNoSideEffect(t, caseID, w, before, after, http.StatusNotFound, "not found")
+}
+
+// assert409NoSideEffect は 409エラー時の共通契約を検証する。
+// amount conflict の返却と、副作用DBスナップショット不変を固定する。
+func assert409NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseRecorder, before, after 境界統合DB副作用スナップショット) {
+	t.Helper()
+	assertErrorNoSideEffect(t, caseID, w, before, after, http.StatusConflict, "amount conflict")
+}
+
+// assertErrorNoSideEffect は エラー系共通契約（HTTP分類/主要項目/副作用不変）を検証する。
+func assertErrorNoSideEffect(
+	t *testing.T,
+	caseID string,
+	w *httptest.ResponseRecorder,
+	before, after 境界統合DB副作用スナップショット,
+	expectedStatus int,
+	expectedMessage string,
+) {
+	t.Helper()
+
+	if w.Code != expectedStatus {
+		t.Fatalf("[%s] expected %d, got %d body=%s", caseID, expectedStatus, w.Code, strings.TrimSpace(w.Body.String()))
 	}
 	var body struct {
 		Message string `json:"message"`
@@ -815,30 +807,8 @@ func assert400NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseReco
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("[%s] failed to decode error response: %v", caseID, err)
 	}
-	if body.Message != "invalid request" {
-		t.Fatalf("[%s] expected message=invalid request, got %s", caseID, body.Message)
-	}
-	if before != after {
-		t.Fatalf("[%s] expected no db side effects, before=%+v after=%+v", caseID, before, after)
-	}
-}
-
-// assert409NoSideEffect は 409エラー時の共通契約を検証する。
-// amount conflict の返却と、副作用DBスナップショット不変を固定する。
-func assert409NoSideEffect(t *testing.T, caseID string, w *httptest.ResponseRecorder, before, after 境界統合DB副作用スナップショット) {
-	t.Helper()
-
-	if w.Code != http.StatusConflict {
-		t.Fatalf("[%s] expected 409, got %d body=%s", caseID, w.Code, strings.TrimSpace(w.Body.String()))
-	}
-	var body struct {
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("[%s] failed to decode conflict response: %v", caseID, err)
-	}
-	if body.Message != "amount conflict" {
-		t.Fatalf("[%s] expected message=amount conflict, got %s", caseID, body.Message)
+	if body.Message != expectedMessage {
+		t.Fatalf("[%s] expected message=%s, got %s", caseID, expectedMessage, body.Message)
 	}
 	if before != after {
 		t.Fatalf("[%s] expected no db side effects, before=%+v after=%+v", caseID, before, after)
