@@ -237,8 +237,7 @@ func TestIntegration_OrderBoundary_customerId同値観測_POSTとGETで一致す
 // 根拠: API応答だけでは検出できない永続状態の回帰を検出するため。
 func TestIntegration_OrderBoundary_副作用DB観測_orders_payments_inventoryを固定する(t *testing.T) {
 	kit := new境界統合Testkit(t)
-	// amount は現状、1以上かどうかの入力検証にのみ使われるため、
-	// 本テストでは有効値として固定値を使う。
+	// amount は注文合計との照合に使われるため、seed済み単価100・数量1の合計で固定する。
 	validAmount := 100
 
 	// 観測4: 以降の在庫遷移確認で比較するため、操作前の在庫状態を取得する。
@@ -367,7 +366,7 @@ func confirmPaymentIntegration(t *testing.T, kit *境界統合Testkit, orderID s
 } {
 	t.Helper()
 
-	// amount は現状、1以上かどうかの入力検証にのみ使われる。
+	// amount は注文合計照合に使われるため、呼び出し側で妥当値/不一致値を使い分ける。
 	// 観測1: HTTPステータス(200)を検証する。
 	payload, _ := json.Marshal(map[string]any{
 		"orderId":        orderID,

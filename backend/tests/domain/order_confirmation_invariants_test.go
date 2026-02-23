@@ -27,6 +27,19 @@ func (r *確定不変条件用OrderRepo) Get(id string) (domain.Order, bool) {
 	return r.order, true
 }
 
+func (r *確定不変条件用OrderRepo) GetTotalAmount(id string) (int, bool) {
+	order, ok := r.Get(id)
+	if !ok {
+		return 0, false
+	}
+	total := 0
+	for _, item := range order.Items {
+		// 不変条件テストでは単価100で固定して合計金額を扱う。
+		total += item.Quantity * 100
+	}
+	return total, true
+}
+
 func (r *確定不変条件用OrderRepo) Update(order domain.Order) error {
 	r.updateCalls++
 	r.order = order
@@ -34,13 +47,13 @@ func (r *確定不変条件用OrderRepo) Update(order domain.Order) error {
 }
 
 type 確定不変条件用PaymentRepo struct {
-	keys         map[string]map[string]struct{}
+	keys         map[string]map[string]int
 	confirmCalls int
 }
 
 func new確定不変条件用PaymentRepo() *確定不変条件用PaymentRepo {
 	return &確定不変条件用PaymentRepo{
-		keys: make(map[string]map[string]struct{}),
+		keys: make(map[string]map[string]int),
 	}
 }
 
@@ -53,13 +66,22 @@ func (r *確定不変条件用PaymentRepo) IsConfirmed(orderID, idempotencyKey s
 	return exists
 }
 
-func (r *確定不変条件用PaymentRepo) Confirm(orderID, idempotencyKey string, _ int) error {
+func (r *確定不変条件用PaymentRepo) ConfirmedAmount(orderID, idempotencyKey string) (int, bool) {
 	perOrder, ok := r.keys[orderID]
 	if !ok {
-		perOrder = make(map[string]struct{})
+		return 0, false
+	}
+	amount, exists := perOrder[idempotencyKey]
+	return amount, exists
+}
+
+func (r *確定不変条件用PaymentRepo) Confirm(orderID, idempotencyKey string, amount int) error {
+	perOrder, ok := r.keys[orderID]
+	if !ok {
+		perOrder = make(map[string]int)
 		r.keys[orderID] = perOrder
 	}
-	perOrder[idempotencyKey] = struct{}{}
+	perOrder[idempotencyKey] = amount
 	r.confirmCalls++
 	return nil
 }

@@ -37,6 +37,19 @@ func (r *memoryOrderRepo) Get(id string) (domain.Order, bool) {
 	return order, ok
 }
 
+func (r *memoryOrderRepo) GetTotalAmount(id string) (int, bool) {
+	order, ok := r.items[id]
+	if !ok {
+		return 0, false
+	}
+	total := 0
+	for _, item := range order.Items {
+		// usecase単体テストでは価格源泉を固定していないため、1個あたり100円で合計を計算する。
+		total += item.Quantity * 100
+	}
+	return total, true
+}
+
 func (r *memoryOrderRepo) Update(order domain.Order) error {
 	r.updateCalls++
 	if r.failUpdate {
@@ -47,11 +60,11 @@ func (r *memoryOrderRepo) Update(order domain.Order) error {
 }
 
 type memoryPaymentRepo struct {
-	keys map[string]map[string]struct{}
+	keys map[string]map[string]int
 }
 
 func newMemoryPaymentRepo() *memoryPaymentRepo {
-	return &memoryPaymentRepo{keys: make(map[string]map[string]struct{})}
+	return &memoryPaymentRepo{keys: make(map[string]map[string]int)}
 }
 
 func (r *memoryPaymentRepo) IsConfirmed(orderID, idempotencyKey string) bool {
@@ -63,13 +76,22 @@ func (r *memoryPaymentRepo) IsConfirmed(orderID, idempotencyKey string) bool {
 	return exists
 }
 
-func (r *memoryPaymentRepo) Confirm(orderID, idempotencyKey string, _ int) error {
+func (r *memoryPaymentRepo) ConfirmedAmount(orderID, idempotencyKey string) (int, bool) {
 	keys, ok := r.keys[orderID]
 	if !ok {
-		keys = make(map[string]struct{})
+		return 0, false
+	}
+	amount, exists := keys[idempotencyKey]
+	return amount, exists
+}
+
+func (r *memoryPaymentRepo) Confirm(orderID, idempotencyKey string, amount int) error {
+	keys, ok := r.keys[orderID]
+	if !ok {
+		keys = make(map[string]int)
 		r.keys[orderID] = keys
 	}
-	keys[idempotencyKey] = struct{}{}
+	keys[idempotencyKey] = amount
 	return nil
 }
 

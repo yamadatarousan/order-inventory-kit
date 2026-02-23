@@ -14,7 +14,7 @@ import (
 )
 
 // このテストは OrderHandler のHTTP境界仕様を固定する。
-// 仕様対象: 正常系と不正入力/未存在時のHTTPステータス分類（200/400/404）。
+// 仕様対象: 正常系と不正入力/未存在/金額不一致のHTTPステータス分類（200/400/404/409）。
 // 根拠: UseCase 実装が変わっても外部境界の振る舞い互換を維持するため。
 type stubUsecase struct {
 	createOrderFunc    func(input usecase.CreateOrderInput) (usecase.CreateOrderOutput, error)
@@ -214,5 +214,29 @@ func TestConfirmPayment_不正な入力(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestConfirmPayment_金額不一致(t *testing.T) {
+	uc := &stubUsecase{
+		createOrderFunc: func(input usecase.CreateOrderInput) (usecase.CreateOrderOutput, error) {
+			return usecase.CreateOrderOutput{}, nil
+		},
+		getOrderFunc:    func(id string) (domain.Order, bool) { return domain.Order{}, false },
+		cancelOrderFunc: func(id string) (domain.Order, error) { return domain.Order{}, nil },
+		confirmPaymentFunc: func(input usecase.ConfirmPaymentInput) (usecase.ConfirmPaymentOutput, error) {
+			return usecase.ConfirmPaymentOutput{}, errors.New("amount conflict")
+		},
+	}
+	r := setupRouter(t, uc)
+
+	payload, _ := json.Marshal(map[string]any{"orderId": "order-1", "amount": 101, "idempotencyKey": "k-1"})
+	req := httptest.NewRequest(http.MethodPost, "/payments/confirm", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d", w.Code)
 	}
 }

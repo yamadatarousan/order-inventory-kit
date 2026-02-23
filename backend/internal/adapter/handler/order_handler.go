@@ -113,6 +113,10 @@ func (h *OrderHandler) confirmPayment(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 			return
 		}
+		if err.Error() == "amount conflict" {
+			c.JSON(http.StatusConflict, gin.H{"message": "amount conflict"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid request"})
 		return
 	}

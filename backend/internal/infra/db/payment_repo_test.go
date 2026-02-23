@@ -29,6 +29,13 @@ func TestPaymentRepository_確定と確認(t *testing.T) {
 	if ok := repo.IsConfirmed("order-1", "k-1"); !ok {
 		t.Fatalf("expected true after confirm")
 	}
+	confirmedAmount, ok := repo.ConfirmedAmount("order-1", "k-1")
+	if !ok {
+		t.Fatalf("expected confirmed amount to exist")
+	}
+	if confirmedAmount != 100 {
+		t.Fatalf("expected confirmed amount=100, got %d", confirmedAmount)
+	}
 
 	var amount sql.NullInt64
 	if err := db.QueryRow(`

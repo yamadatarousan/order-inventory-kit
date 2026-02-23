@@ -102,6 +102,29 @@ func (r *OrderRepository) Get(id string) (domain.Order, bool) {
 	return order, true
 }
 
+// GetTotalAmount は注文合計（quantity * unit_price の合計）を取得する。
+func (r *OrderRepository) GetTotalAmount(id string) (int, bool) {
+	var exists bool
+	if err := r.db.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM orders WHERE id = $1)
+	`, id).Scan(&exists); err != nil {
+		return 0, false
+	}
+	if !exists {
+		return 0, false
+	}
+
+	var total int
+	if err := r.db.QueryRow(`
+		SELECT COALESCE(SUM(quantity * COALESCE(unit_price, 0)), 0)
+		FROM order_items
+		WHERE order_id = $1
+	`, id).Scan(&total); err != nil {
+		return 0, false
+	}
+	return total, true
+}
+
 // Update は注文を更新する。
 func (r *OrderRepository) Update(order domain.Order) error {
 	tx, err := r.db.BeginTx(context.Background(), nil)

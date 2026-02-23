@@ -25,6 +25,22 @@ func (r *PaymentRepository) IsConfirmed(orderID, idempotencyKey string) bool {
 	return true
 }
 
+// ConfirmedAmount は冪等性キーに紐づく確定金額を返す。
+func (r *PaymentRepository) ConfirmedAmount(orderID, idempotencyKey string) (int, bool) {
+	var amount sql.NullInt64
+	if err := r.db.QueryRow(`
+		SELECT amount
+		FROM payments
+		WHERE order_id = $1 AND idempotency_key = $2
+	`, orderID, idempotencyKey).Scan(&amount); err != nil {
+		return 0, false
+	}
+	if !amount.Valid {
+		return 0, false
+	}
+	return int(amount.Int64), true
+}
+
 // Confirm は決済を確定する。
 func (r *PaymentRepository) Confirm(orderID, idempotencyKey string, amount int) error {
 	_, err := r.db.Exec(`

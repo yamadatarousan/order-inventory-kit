@@ -11,12 +11,14 @@ import (
 type OrderRepository interface {
 	Create(order domain.Order) error
 	Get(id string) (domain.Order, bool)
+	GetTotalAmount(id string) (int, bool)
 	Update(order domain.Order) error
 }
 
 // PaymentRepository は決済の冪等性記録を抽象化する。
 type PaymentRepository interface {
 	IsConfirmed(orderID, idempotencyKey string) bool
+	ConfirmedAmount(orderID, idempotencyKey string) (int, bool)
 	Confirm(orderID, idempotencyKey string, amount int) error
 }
 
@@ -151,7 +153,18 @@ func (u *OrderUsecase) ConfirmPayment(input ConfirmPaymentInput) (ConfirmPayment
 		return ConfirmPaymentOutput{}, errors.New("not found")
 	}
 	if u.payments.IsConfirmed(input.OrderID, input.IdempotencyKey) {
+		confirmedAmount, found := u.payments.ConfirmedAmount(input.OrderID, input.IdempotencyKey)
+		if found && confirmedAmount != input.Amount {
+			return ConfirmPaymentOutput{}, errors.New("amount conflict")
+		}
 		return ConfirmPaymentOutput{OrderID: input.OrderID, PaymentStatus: "confirmed"}, nil
+	}
+	totalAmount, ok := u.orders.GetTotalAmount(input.OrderID)
+	if !ok {
+		return ConfirmPaymentOutput{}, errors.New("not found")
+	}
+	if input.Amount != totalAmount {
+		return ConfirmPaymentOutput{}, errors.New("amount conflict")
 	}
 	if order.Status == domain.OrderStatusConfirmed {
 		return ConfirmPaymentOutput{}, errors.New("already confirmed")
