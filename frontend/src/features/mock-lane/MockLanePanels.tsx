@@ -151,10 +151,10 @@ export function MockLanePanels() {
   }
 
   return (
-    <section>
+    <section className="panel panel-mock">
       <h2>仮実装レーン（mock）</h2>
 
-      <section>
+      <section className="subpanel">
         <h3>商品一覧</h3>
         <p>販売中の商品のみを表示します。</p>
         <ul>
@@ -174,7 +174,7 @@ export function MockLanePanels() {
           ))}
         </ul>
 
-        <form onSubmit={onLoadProductDetail}>
+        <form onSubmit={onLoadProductDetail} className="stack-form">
           <label htmlFor="productDetailSKU">商品詳細SKU</label>
           <input
             id="productDetailSKU"
@@ -190,12 +190,16 @@ export function MockLanePanels() {
             {productDetail.unitPrice}
           </p>
         ) : null}
-        {productDetailMessage !== "" ? <p role="status">{productDetailMessage}</p> : null}
+        {productDetailMessage !== "" ? (
+          <p role="status" className="status-message">
+            {productDetailMessage}
+          </p>
+        ) : null}
       </section>
 
-      <section>
+      <section className="subpanel">
         <h3>カート操作</h3>
-        <form onSubmit={onAddCartItem}>
+        <form onSubmit={onAddCartItem} className="stack-form">
           <label htmlFor="cartSKU">カートSKU</label>
           <input
             id="cartSKU"
@@ -243,10 +247,14 @@ export function MockLanePanels() {
         <p>shipping: {cartTotals.shippingFee}</p>
         <p>serviceFee: {cartTotals.serviceFee}</p>
         <p>total: {cartTotals.total} (server-calculated mock)</p>
-        {cartMessage !== "" ? <p role="status">{cartMessage}</p> : null}
+        {cartMessage !== "" ? (
+          <p role="status" className="status-message">
+            {cartMessage}
+          </p>
+        ) : null}
       </section>
 
-      <section>
+      <section className="subpanel">
         <h3>最終確認（US-CHK-03）</h3>
         <p>商品小計: {cartTotals.subtotal}</p>
         <p>送料: {cartTotals.shippingFee}</p>
@@ -255,9 +263,9 @@ export function MockLanePanels() {
         <p>表示基準: サーバ算出値（mock）</p>
       </section>
 
-      <section>
+      <section className="subpanel">
         <h3>注文履歴</h3>
-        <form onSubmit={onLoadHistory}>
+        <form onSubmit={onLoadHistory} className="stack-form">
           <label htmlFor="historyCustomerId">履歴customerId</label>
           <input
             id="historyCustomerId"
@@ -279,7 +287,7 @@ export function MockLanePanels() {
           ))}
         </ul>
         {historyDetail ? (
-          <article>
+          <article className="result-card">
             <p>detail-orderId: {historyDetail.orderId}</p>
             <p>detail-status: {historyDetail.status}</p>
             <p>detail-customerId: {historyDetail.customerId}</p>
@@ -296,7 +304,11 @@ export function MockLanePanels() {
             </ul>
           </article>
         ) : null}
-        {historyMessage !== "" ? <p role="status">{historyMessage}</p> : null}
+        {historyMessage !== "" ? (
+          <p role="status" className="status-message">
+            {historyMessage}
+          </p>
+        ) : null}
       </section>
     </section>
   );

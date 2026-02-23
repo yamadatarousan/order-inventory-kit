@@ -472,8 +472,19 @@ OpenAPI生成クライアントを用いてUIから操作できる状態にす�
 - [x] タスク4: 仮実装レーンの画面をモックで先行実装する（`US-PROD-*` `US-CART-*` `US-CHK-03` `US-HIS-*`）（Red: 受け入れ条件のUI観測テストを先行追加 / Green: fixture/MSWで画面導線を実装 / Refactor: モック生成と画面ロジックの重複を整理）
 - [x] タスク5: 仮実装レーンの差し替え契約を明記する（Red: 差し替え先が曖昧な状態を確認 / Green: 各画面ごとに差し替え先API・削除条件・移行先フェーズを `docs/plan.md` に記載 / Refactor: 依存順を整理）
 - [x] タスク6: 生成クライアント接続を固定する（Red: 生成差分検出を確認 / Green: `frontend/src/api/` 再生成と呼び出し更新 / Refactor: API層の集約とCI回帰確認）
-- [ ] タスク7: UIスタイル基盤を固定する（Red: 画面ごとにスタイル実装が分散して運用が揺れる状態を確認 / Green: Tailwind採用可否を決定し、採用時は導入・非採用時はCSS方針を明文化して実装へ反映 / Refactor: デザイントークン・共通スタイル責務を整理）
+- [x] タスク7: UIスタイル基盤を固定する（Red: 画面ごとにスタイル実装が分散して運用が揺れる状態を確認 / Green: Tailwind採用可否を決定し、採用時は導入・非採用時はCSS方針を明文化して実装へ反映 / Refactor: デザイントークン・共通スタイル責務を整理）
 - [x] タスク8: CIで frontend の lint/test/build を必須化する（Red: 未実行でも統合できる状態を確認 / Green: `.github/workflows/ci.yml` に `npm ci` `npm run lint` `npm test` `npm run build` を追加 / Refactor: ステップ順とコメントを整理）
+
+#### タスク7 実施結果（UIスタイル基盤）
+- Red:
+  - 各画面にスタイル基準がなく、余白・入力UI・見出し階層が画面単位でばらつく状態を確認
+- Green:
+  - Tailwindは不採用とした（依存追加を行わず、既存構成のまま基盤を統一）
+  - `frontend/src/app/styles.css` を追加し、CSS変数によるデザイントークン（色/余白/角丸）を定義
+  - `frontend/src/app/App.tsx` と各画面コンポーネントに共通クラス（`panel` `stack-form` `status-message`）を反映
+- Refactor:
+  - スタイル責務を `styles.css` に集約し、コンポーネント側は構造と状態表示に限定
+  - `npm run lint` `npm test` `npm run build` で回帰なしを確認
 
 #### タスク5 Red確認（差し替え先の曖昧さ）
 - `frontend/src/features/mock-lane/MockLanePanels.tsx` には仮実装画面を追加済みだが、どのAPIへ差し替えるかの対応表が未定義

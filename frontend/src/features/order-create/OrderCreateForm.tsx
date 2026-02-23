@@ -70,8 +70,9 @@ export function OrderCreateForm({ submitOrder = createOrder }: OrderCreateFormPr
   }
 
   return (
-    <section>
-      <form onSubmit={onSubmit}>
+    <section className="panel panel-create">
+      <h2>注文作成</h2>
+      <form onSubmit={onSubmit} className="stack-form">
         <div>
           <label htmlFor="customerId">customerId</label>
           <input
@@ -111,7 +112,11 @@ export function OrderCreateForm({ submitOrder = createOrder }: OrderCreateFormPr
           注文を作成
         </button>
       </form>
-      {message !== "" ? <p role="status">{message}</p> : null}
+      {message !== "" ? (
+        <p role="status" className="status-message">
+          {message}
+        </p>
+      ) : null}
     </section>
   );
 }

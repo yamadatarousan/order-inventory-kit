@@ -114,10 +114,10 @@ export function OrderActionsPanel({
   }
 
   return (
-    <section>
+    <section className="panel panel-actions">
       <h2>注文操作</h2>
 
-      <form onSubmit={onFetchOrder}>
+      <form onSubmit={onFetchOrder} className="stack-form">
         <label htmlFor="lookupOrderId">参照orderId</label>
         <input
           id="lookupOrderId"
@@ -128,7 +128,7 @@ export function OrderActionsPanel({
         <button type="submit">注文を取得</button>
       </form>
 
-      <form onSubmit={onCancelOrder}>
+      <form onSubmit={onCancelOrder} className="stack-form">
         <label htmlFor="cancelOrderId">キャンセルorderId</label>
         <input
           id="cancelOrderId"
@@ -139,7 +139,7 @@ export function OrderActionsPanel({
         <button type="submit">注文をキャンセル</button>
       </form>
 
-      <form onSubmit={onConfirmPayment}>
+      <form onSubmit={onConfirmPayment} className="stack-form">
         <label htmlFor="paymentOrderId">決済orderId</label>
         <input
           id="paymentOrderId"
@@ -166,9 +166,13 @@ export function OrderActionsPanel({
         <button type="submit">決済を確定</button>
       </form>
 
-      {message !== "" ? <p role="status">{message}</p> : null}
+      {message !== "" ? (
+        <p role="status" className="status-message">
+          {message}
+        </p>
+      ) : null}
       {order ? (
-        <article>
+        <article className="result-card">
           <p>id: {order.id}</p>
           <p>customerId: {order.customerId}</p>
           <p>status: {order.status}</p>
