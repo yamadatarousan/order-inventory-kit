@@ -471,7 +471,7 @@ OpenAPI生成クライアントを用いてUIから操作できる状態にす�
 - [x] タスク3: 本実装レーンの注文参照・キャンセル・決済確定を実装する（`US-ORD-02` `US-ORD-03` `US-PAY-01`）（Red: 詳細表示/キャンセル/決済確定のUIテストを先行追加 / Green: `GET /orders/{id}` `POST /orders/{id}/cancel` `POST /payments/confirm` を接続 / Refactor: 状態管理とAPI呼び出し責務を整理して再実行通過）
 - [x] タスク4: 仮実装レーンの画面をモックで先行実装する（`US-PROD-*` `US-CART-*` `US-CHK-03` `US-HIS-*`）（Red: 受け入れ条件のUI観測テストを先行追加 / Green: fixture/MSWで画面導線を実装 / Refactor: モック生成と画面ロジックの重複を整理）
 - [x] タスク5: 仮実装レーンの差し替え契約を明記する（Red: 差し替え先が曖昧な状態を確認 / Green: 各画面ごとに差し替え先API・削除条件・移行先フェーズを `docs/plan.md` に記載 / Refactor: 依存順を整理）
-- [ ] タスク6: 生成クライアント接続を固定する（Red: 生成差分検出を確認 / Green: `frontend/src/api/` 再生成と呼び出し更新 / Refactor: API層の集約とCI回帰確認）
+- [x] タスク6: 生成クライアント接続を固定する（Red: 生成差分検出を確認 / Green: `frontend/src/api/` 再生成と呼び出し更新 / Refactor: API層の集約とCI回帰確認）
 - [ ] タスク7: UIスタイル基盤を固定する（Red: 画面ごとにスタイル実装が分散して運用が揺れる状態を確認 / Green: Tailwind採用可否を決定し、採用時は導入・非採用時はCSS方針を明文化して実装へ反映 / Refactor: デザイントークン・共通スタイル責務を整理）
 - [x] タスク8: CIで frontend の lint/test/build を必須化する（Red: 未実行でも統合できる状態を確認 / Green: `.github/workflows/ci.yml` に `npm ci` `npm run lint` `npm test` `npm run build` を追加 / Refactor: ステップ順とコメントを整理）
 
