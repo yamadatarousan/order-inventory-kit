@@ -84,4 +84,29 @@ describe("OrderCreateForm", () => {
       await screen.findByText("価格が更新されました。再確認してください"),
     ).toBeInTheDocument();
   });
+
+  it("注文作成成功時に onCreated へ orderId を渡す", async () => {
+    const user = userEvent.setup();
+    const submitOrder = vi.fn().mockResolvedValue({
+      kind: "success",
+      orderId: "order-123",
+      status: "accepted",
+    });
+    const onCreated = vi.fn();
+
+    render(
+      <OrderCreateForm
+        submitOrder={submitOrder as SubmitOrder}
+        onCreated={onCreated}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("customerId"), "c-1");
+    await user.type(screen.getByLabelText("sku"), "sku-1");
+    await user.type(screen.getByLabelText("quantity"), "1");
+    await user.type(screen.getByLabelText("unitPrice"), "100");
+    await user.click(screen.getByRole("button", { name: "注文を作成" }));
+
+    expect(onCreated).toHaveBeenCalledWith("order-123");
+  });
 });

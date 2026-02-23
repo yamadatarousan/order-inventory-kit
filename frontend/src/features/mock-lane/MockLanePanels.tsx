@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   calculateCartTotals,
   getHistoryDetail,
@@ -13,42 +13,62 @@ import {
 } from "./mockApi";
 
 export function MockLanePanels() {
+  const [loginId, setLoginId] = useState("c-1");
+  const [password, setPassword] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentCustomerID, setCurrentCustomerID] = useState("c-1");
+  const [loginMessage, setLoginMessage] = useState("");
+
   const [products, setProducts] = useState<MockProduct[]>([]);
-  const [productDetailSKU, setProductDetailSKU] = useState("");
+  const [keyword, setKeyword] = useState("");
   const [productDetailMessage, setProductDetailMessage] = useState("");
   const [productDetail, setProductDetail] = useState<MockProduct | null>(null);
 
-  const [cartSKU, setCartSKU] = useState("");
-  const [cartQuantity, setCartQuantity] = useState("");
   const [cartMessage, setCartMessage] = useState("");
   const [cartItems, setCartItems] = useState<MockCartItem[]>([]);
-  const [updateQuantities, setUpdateQuantities] = useState<Record<string, string>>({});
+  const [draftQuantities, setDraftQuantities] = useState<Record<string, string>>({});
 
-  const [historyCustomerID, setHistoryCustomerID] = useState("c-1");
   const [historyMessage, setHistoryMessage] = useState("");
   const [historySummaries, setHistorySummaries] = useState<MockOrderSummary[]>([]);
   const [historyDetail, setHistoryDetail] = useState<MockOrderDetail | null>(null);
 
-  useState(() => {
-    void listProducts().then((items) => setProducts(items));
-  });
+  useEffect(() => {
+    void listProducts().then((items) => {
+      setProducts(items);
+      const defaults = items.reduce<Record<string, string>>((acc, item) => {
+        acc[item.sku] = "1";
+        return acc;
+      }, {});
+      setDraftQuantities(defaults);
+    });
+  }, []);
 
-  const activeProducts = useMemo(
-    () => products.filter((product) => product.isActive),
-    [products],
-  );
+  const activeProducts = useMemo(() => {
+    const normalized = keyword.trim().toLowerCase();
+    return products.filter(
+      (product) =>
+        product.isActive &&
+        (normalized === "" ||
+          product.name.toLowerCase().includes(normalized) ||
+          product.sku.toLowerCase().includes(normalized)),
+    );
+  }, [products, keyword]);
   const cartTotals = useMemo(() => calculateCartTotals(cartItems), [cartItems]);
 
-  async function onLoadProductDetail(event: FormEvent<HTMLFormElement>) {
+  function onLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setProductDetailMessage("");
-    setProductDetail(null);
-
-    const sku = productDetailSKU.trim();
-    if (sku === "") {
-      setProductDetailMessage("入力内容を確認してください");
+    setLoginMessage("");
+    if (loginId.trim() === "" || password.trim() === "") {
+      setLoginMessage("ログイン情報を入力してください");
       return;
     }
+    setCurrentCustomerID(loginId.trim());
+    setIsLoggedIn(true);
+  }
+
+  async function onLoadProductDetail(sku: string) {
+    setProductDetailMessage("");
+    setProductDetail(null);
     const result = await getProductDetail(sku);
     if (result.kind === "success") {
       setProductDetail(result.product);
@@ -57,13 +77,12 @@ export function MockLanePanels() {
     setProductDetailMessage("商品が見つかりません (404)");
   }
 
-  function onAddCartItem(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function onAddCartItem(sku: string) {
     setCartMessage("");
 
-    const sku = cartSKU.trim();
-    const quantity = Number(cartQuantity);
-    if (sku === "" || !Number.isInteger(quantity) || quantity < 1) {
+    const quantityRaw = draftQuantities[sku] ?? "1";
+    const quantity = Number(quantityRaw);
+    if (!Number.isInteger(quantity) || quantity < 1) {
       setCartMessage("カート追加に失敗しました (400)");
       return;
     }
@@ -101,7 +120,7 @@ export function MockLanePanels() {
   }
 
   function onUpdateQuantity(sku: string) {
-    const raw = updateQuantities[sku] ?? "";
+    const raw = draftQuantities[sku] ?? "";
     const quantity = Number(raw);
     if (!Number.isInteger(quantity) || quantity < 1) {
       setCartMessage("数量変更に失敗しました (400)");
@@ -123,12 +142,11 @@ export function MockLanePanels() {
     setCartMessage("商品を削除しました");
   }
 
-  async function onLoadHistory(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onLoadHistory() {
     setHistoryMessage("");
     setHistoryDetail(null);
 
-    const customerId = historyCustomerID.trim();
+    const customerId = currentCustomerID.trim();
     if (customerId === "") {
       setHistoryMessage("入力内容を確認してください");
       return;
@@ -139,7 +157,7 @@ export function MockLanePanels() {
   }
 
   async function onLoadHistoryDetail(orderId: string) {
-    const customerId = historyCustomerID.trim();
+    const customerId = currentCustomerID.trim();
     const result = await getHistoryDetail(customerId, orderId);
     if (result.kind === "success") {
       setHistoryDetail(result.order);
@@ -152,164 +170,194 @@ export function MockLanePanels() {
 
   return (
     <section className="panel panel-mock">
-      <h2>仮実装レーン（mock）</h2>
+      <h2>ECフロント仮実装（mock）</h2>
 
-      <section className="subpanel">
-        <h3>商品一覧</h3>
-        <p>販売中の商品のみを表示します。</p>
-        <ul>
-          {activeProducts.map((product) => (
-            <li key={product.sku}>
-              {product.sku} / {product.name} / unit_price:{product.unitPrice} /{" "}
-              {product.currency} / is_active:{String(product.isActive)}
-              <button
-                type="button"
-                onClick={() => {
-                  setCartSKU(product.sku);
-                }}
-              >
-                カート追加候補に設定
-              </button>
-            </li>
-          ))}
-        </ul>
+      {!isLoggedIn ? (
+        <section className="subpanel">
+          <h3>ログイン（仮）</h3>
+          <p>認証API未実装のため、入力値をそのまま会員IDとして扱います。</p>
+          <form onSubmit={onLogin} className="stack-form">
+            <label htmlFor="loginId">会員ID</label>
+            <input
+              id="loginId"
+              name="loginId"
+              value={loginId}
+              onChange={(event) => setLoginId(event.target.value)}
+            />
+            <label htmlFor="password">パスワード</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <button type="submit">ログイン</button>
+          </form>
+          {loginMessage !== "" ? (
+            <p role="status" className="status-message">
+              {loginMessage}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
-        <form onSubmit={onLoadProductDetail} className="stack-form">
-          <label htmlFor="productDetailSKU">商品詳細SKU</label>
-          <input
-            id="productDetailSKU"
-            name="productDetailSKU"
-            value={productDetailSKU}
-            onChange={(event) => setProductDetailSKU(event.target.value)}
-          />
-          <button type="submit">商品詳細を表示</button>
-        </form>
-        {productDetail ? (
-          <p>
-            detail: {productDetail.sku} / {productDetail.name} /{" "}
-            {productDetail.unitPrice}
-          </p>
-        ) : null}
-        {productDetailMessage !== "" ? (
-          <p role="status" className="status-message">
-            {productDetailMessage}
-          </p>
-        ) : null}
-      </section>
-
-      <section className="subpanel">
-        <h3>カート操作</h3>
-        <form onSubmit={onAddCartItem} className="stack-form">
-          <label htmlFor="cartSKU">カートSKU</label>
-          <input
-            id="cartSKU"
-            name="cartSKU"
-            value={cartSKU}
-            onChange={(event) => setCartSKU(event.target.value)}
-          />
-          <label htmlFor="cartQuantity">カート数量</label>
-          <input
-            id="cartQuantity"
-            name="cartQuantity"
-            type="number"
-            inputMode="numeric"
-            value={cartQuantity}
-            onChange={(event) => setCartQuantity(event.target.value)}
-          />
-          <button type="submit">カートに追加</button>
-        </form>
-
-        <ul>
-          {cartItems.map((item) => (
-            <li key={item.sku}>
-              {item.sku} x {item.quantity} = {item.lineAmount}
-              <label htmlFor={`qty-${item.sku}`}>更新数量</label>
+      {isLoggedIn ? (
+        <>
+          <section className="subpanel">
+            <h3>商品一覧</h3>
+            <p>ログイン中: {currentCustomerID}</p>
+            <div className="product-toolbar">
+              <label htmlFor="productKeyword">検索</label>
               <input
-                id={`qty-${item.sku}`}
-                value={updateQuantities[item.sku] ?? ""}
-                onChange={(event) =>
-                  setUpdateQuantities((current) => ({
-                    ...current,
-                    [item.sku]: event.target.value,
-                  }))
-                }
+                id="productKeyword"
+                name="productKeyword"
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder="商品名 / SKU"
               />
-              <button type="button" onClick={() => onUpdateQuantity(item.sku)}>
-                数量更新
-              </button>
-              <button type="button" onClick={() => onRemoveCartItem(item.sku)}>
-                商品削除
-              </button>
-            </li>
-          ))}
-        </ul>
-        <p>subtotal: {cartTotals.subtotal}</p>
-        <p>shipping: {cartTotals.shippingFee}</p>
-        <p>serviceFee: {cartTotals.serviceFee}</p>
-        <p>total: {cartTotals.total} (server-calculated mock)</p>
-        {cartMessage !== "" ? (
-          <p role="status" className="status-message">
-            {cartMessage}
-          </p>
-        ) : null}
-      </section>
+            </div>
 
-      <section className="subpanel">
-        <h3>最終確認（US-CHK-03）</h3>
-        <p>商品小計: {cartTotals.subtotal}</p>
-        <p>送料: {cartTotals.shippingFee}</p>
-        <p>手数料: {cartTotals.serviceFee}</p>
-        <p>合計: {cartTotals.total}</p>
-        <p>表示基準: サーバ算出値（mock）</p>
-      </section>
-
-      <section className="subpanel">
-        <h3>注文履歴</h3>
-        <form onSubmit={onLoadHistory} className="stack-form">
-          <label htmlFor="historyCustomerId">履歴customerId</label>
-          <input
-            id="historyCustomerId"
-            name="historyCustomerId"
-            value={historyCustomerID}
-            onChange={(event) => setHistoryCustomerID(event.target.value)}
-          />
-          <button type="submit">履歴を取得</button>
-        </form>
-        <ul>
-          {historySummaries.map((summary) => (
-            <li key={summary.orderId}>
-              {summary.orderId} / {summary.status} / {summary.createdAt} /{" "}
-              {summary.totalAmount}
-              <button type="button" onClick={() => onLoadHistoryDetail(summary.orderId)}>
-                詳細を表示
-              </button>
-            </li>
-          ))}
-        </ul>
-        {historyDetail ? (
-          <article className="result-card">
-            <p>detail-orderId: {historyDetail.orderId}</p>
-            <p>detail-status: {historyDetail.status}</p>
-            <p>detail-customerId: {historyDetail.customerId}</p>
-            <p>detail-subtotal: {historyDetail.subtotal}</p>
-            <p>detail-shipping: {historyDetail.shippingFee}</p>
-            <p>detail-serviceFee: {historyDetail.serviceFee}</p>
-            <p>detail-total: {historyDetail.totalAmount}</p>
-            <ul>
-              {historyDetail.items.map((item) => (
-                <li key={`${historyDetail.orderId}-${item.sku}`}>
-                  {item.sku} x {item.quantity} ({item.lineAmount})
+            <ul className="product-grid">
+              {activeProducts.map((product) => (
+                <li key={product.sku} className="product-card">
+                  <p className="product-name">{product.name}</p>
+                  <p>SKU: {product.sku}</p>
+                  <p>
+                    価格: {product.unitPrice} {product.currency}
+                  </p>
+                  <label htmlFor={`product-qty-${product.sku}`}>数量</label>
+                  <input
+                    id={`product-qty-${product.sku}`}
+                    value={draftQuantities[product.sku] ?? "1"}
+                    onChange={(event) =>
+                      setDraftQuantities((current) => ({
+                        ...current,
+                        [product.sku]: event.target.value,
+                      }))
+                    }
+                  />
+                  <div className="actions-row">
+                    <button type="button" onClick={() => void onLoadProductDetail(product.sku)}>
+                      詳細
+                    </button>
+                    <button type="button" onClick={() => onAddCartItem(product.sku)}>
+                      カートに追加
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
-          </article>
-        ) : null}
-        {historyMessage !== "" ? (
-          <p role="status" className="status-message">
-            {historyMessage}
-          </p>
-        ) : null}
-      </section>
+            {activeProducts.length === 0 ? <p>該当商品がありません</p> : null}
+          </section>
+
+          <section className="subpanel">
+            <h3>商品詳細</h3>
+            {productDetail ? (
+              <article className="result-card">
+                <p>SKU: {productDetail.sku}</p>
+                <p>商品名: {productDetail.name}</p>
+                <p>
+                  価格: {productDetail.unitPrice} {productDetail.currency}
+                </p>
+              </article>
+            ) : (
+              <p>商品を選択すると詳細を表示します。</p>
+            )}
+            {productDetailMessage !== "" ? (
+              <p role="status" className="status-message">
+                {productDetailMessage}
+              </p>
+            ) : null}
+          </section>
+
+          <section className="subpanel">
+            <h3>カート</h3>
+            <ul>
+              {cartItems.map((item) => (
+                <li key={item.sku}>
+                  {item.sku} x {item.quantity} = {item.lineAmount}
+                  <label htmlFor={`cart-qty-${item.sku}`}>数量変更</label>
+                  <input
+                    id={`cart-qty-${item.sku}`}
+                    value={draftQuantities[item.sku] ?? ""}
+                    onChange={(event) =>
+                      setDraftQuantities((current) => ({
+                        ...current,
+                        [item.sku]: event.target.value,
+                      }))
+                    }
+                  />
+                  <div className="actions-row">
+                    <button type="button" onClick={() => onUpdateQuantity(item.sku)}>
+                      数量更新
+                    </button>
+                    <button type="button" onClick={() => onRemoveCartItem(item.sku)}>
+                      商品削除
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {cartItems.length === 0 ? <p>カートは空です</p> : null}
+            {cartMessage !== "" ? (
+              <p role="status" className="status-message">
+                {cartMessage}
+              </p>
+            ) : null}
+          </section>
+
+          <section className="subpanel">
+            <h3>最終確認（US-CHK-03）</h3>
+            <p>商品小計: {cartTotals.subtotal}</p>
+            <p>送料: {cartTotals.shippingFee}</p>
+            <p>手数料: {cartTotals.serviceFee}</p>
+            <p>合計: {cartTotals.total}</p>
+            <p>表示基準: サーバ算出値（mock）</p>
+          </section>
+
+          <section className="subpanel">
+            <h3>注文履歴</h3>
+            <button type="button" onClick={() => void onLoadHistory()}>
+              履歴を取得
+            </button>
+            <ul>
+              {historySummaries.map((summary) => (
+                <li key={summary.orderId}>
+                  {summary.orderId} / {summary.status} / {summary.createdAt} /{" "}
+                  {summary.totalAmount}
+                  <button type="button" onClick={() => void onLoadHistoryDetail(summary.orderId)}>
+                    詳細を表示
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {historyDetail ? (
+              <article className="result-card">
+                <p>detail-orderId: {historyDetail.orderId}</p>
+                <p>detail-status: {historyDetail.status}</p>
+                <p>detail-customerId: {historyDetail.customerId}</p>
+                <p>detail-subtotal: {historyDetail.subtotal}</p>
+                <p>detail-shipping: {historyDetail.shippingFee}</p>
+                <p>detail-serviceFee: {historyDetail.serviceFee}</p>
+                <p>detail-total: {historyDetail.totalAmount}</p>
+                <ul>
+                  {historyDetail.items.map((item) => (
+                    <li key={`${historyDetail.orderId}-${item.sku}`}>
+                      {item.sku} x {item.quantity} ({item.lineAmount})
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ) : null}
+            {historyMessage !== "" ? (
+              <p role="status" className="status-message">
+                {historyMessage}
+              </p>
+            ) : null}
+          </section>
+        </>
+      ) : null}
     </section>
   );
 }

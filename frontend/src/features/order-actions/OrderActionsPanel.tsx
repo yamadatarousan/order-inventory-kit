@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   cancelOrder as cancelOrderApi,
   confirmPayment as confirmPaymentApi,
@@ -14,53 +14,69 @@ type OrderActionsPanelProps = {
   fetchOrder?: (orderId: string) => Promise<FetchOrderResult>;
   cancelOrder?: (orderId: string) => Promise<CancelOrderResult>;
   confirmPayment?: (input: ConfirmPaymentInput) => Promise<ConfirmPaymentResult>;
+  currentOrderId?: string;
 };
 
 export function OrderActionsPanel({
   fetchOrder = fetchOrderApi,
   cancelOrder = cancelOrderApi,
   confirmPayment = confirmPaymentApi,
+  currentOrderId = "",
 }: OrderActionsPanelProps) {
-  const [lookupOrderId, setLookupOrderId] = useState("");
-  const [cancelOrderId, setCancelOrderId] = useState("");
-  const [paymentOrderId, setPaymentOrderId] = useState("");
   const [amount, setAmount] = useState("");
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [message, setMessage] = useState("");
   const [order, setOrder] = useState<OrderView | null>(null);
+  const targetOrderId = currentOrderId.trim();
 
-  async function onFetchOrder(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage("");
-    if (lookupOrderId.trim() === "") {
-      setMessage("入力内容を確認してください");
+  useEffect(() => {
+    if (targetOrderId === "") {
+      setOrder(null)
       return;
     }
+    void loadOrder(targetOrderId);
+  }, [targetOrderId]);
 
-    const result = await fetchOrder(lookupOrderId.trim());
+  async function loadOrder(orderId: string) {
+    const result = await fetchOrder(orderId);
     if (result.kind === "success") {
       setOrder(result.order);
-      setMessage("注文を取得しました");
-      return;
+      return { ok: true as const };
     }
     if (result.kind === "notFound") {
       setOrder(null);
+      return { ok: false as const, reason: "notFound" as const };
+    }
+    setOrder(null);
+    return { ok: false as const, reason: "unknown" as const };
+  }
+
+  async function onFetchOrder() {
+    setMessage("");
+    if (targetOrderId === "") {
+      setMessage("先に注文を作成してください");
+      return;
+    }
+    const result = await loadOrder(targetOrderId);
+    if (result.ok) {
+      setMessage("注文を取得しました");
+      return;
+    }
+    if (result.reason === "notFound") {
       setMessage("注文が見つかりません");
       return;
     }
-    setOrder(null);
     setMessage("注文取得に失敗しました");
   }
 
-  async function onCancelOrder(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCancelOrder() {
     setMessage("");
-    if (cancelOrderId.trim() === "") {
-      setMessage("入力内容を確認してください");
+    if (targetOrderId === "") {
+      setMessage("先に注文を作成してください");
       return;
     }
 
-    const result = await cancelOrder(cancelOrderId.trim());
+    const result = await cancelOrder(targetOrderId);
     if (result.kind === "success") {
       setOrder(result.order);
       setMessage("注文をキャンセルしました");
@@ -76,10 +92,13 @@ export function OrderActionsPanel({
   async function onConfirmPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    if (targetOrderId === "") {
+      setMessage("先に注文を作成してください");
+      return;
+    }
 
     const parsedAmount = Number(amount);
     if (
-      paymentOrderId.trim() === "" ||
       idempotencyKey.trim() === "" ||
       amount.trim() === "" ||
       !Number.isInteger(parsedAmount) ||
@@ -90,7 +109,7 @@ export function OrderActionsPanel({
     }
 
     const result = await confirmPayment({
-      orderId: paymentOrderId.trim(),
+      orderId: targetOrderId,
       amount: parsedAmount,
       idempotencyKey: idempotencyKey.trim(),
     });
@@ -116,37 +135,24 @@ export function OrderActionsPanel({
   return (
     <section className="panel panel-actions">
       <h2>注文操作</h2>
+      {targetOrderId !== "" ? (
+        <p className="hint-message">
+          現在の注文ID: {targetOrderId}
+        </p>
+      ) : (
+        <p className="hint-message">注文作成後に操作できます</p>
+      )}
 
-      <form onSubmit={onFetchOrder} className="stack-form">
-        <label htmlFor="lookupOrderId">参照orderId</label>
-        <input
-          id="lookupOrderId"
-          name="lookupOrderId"
-          value={lookupOrderId}
-          onChange={(event) => setLookupOrderId(event.target.value)}
-        />
-        <button type="submit">注文を取得</button>
-      </form>
-
-      <form onSubmit={onCancelOrder} className="stack-form">
-        <label htmlFor="cancelOrderId">キャンセルorderId</label>
-        <input
-          id="cancelOrderId"
-          name="cancelOrderId"
-          value={cancelOrderId}
-          onChange={(event) => setCancelOrderId(event.target.value)}
-        />
-        <button type="submit">注文をキャンセル</button>
-      </form>
+      <div className="actions-row">
+        <button type="button" onClick={() => void onFetchOrder()}>
+          注文を再取得
+        </button>
+        <button type="button" onClick={() => void onCancelOrder()}>
+          注文をキャンセル
+        </button>
+      </div>
 
       <form onSubmit={onConfirmPayment} className="stack-form">
-        <label htmlFor="paymentOrderId">決済orderId</label>
-        <input
-          id="paymentOrderId"
-          name="paymentOrderId"
-          value={paymentOrderId}
-          onChange={(event) => setPaymentOrderId(event.target.value)}
-        />
         <label htmlFor="amount">amount</label>
         <input
           id="amount"

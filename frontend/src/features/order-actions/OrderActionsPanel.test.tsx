@@ -15,7 +15,7 @@ type ConfirmPayment = (
 ) => Promise<ConfirmPaymentResult>;
 
 describe("OrderActionsPanel", () => {
-  it("注文参照で主要項目を表示する", async () => {
+  it("現在の注文IDで注文参照し主要項目を表示する", async () => {
     const user = userEvent.setup();
     const fetchOrder = vi.fn().mockResolvedValue({
       kind: "success",
@@ -27,10 +27,14 @@ describe("OrderActionsPanel", () => {
       },
     });
 
-    render(<OrderActionsPanel fetchOrder={fetchOrder as FetchOrder} />);
+    render(
+      <OrderActionsPanel
+        fetchOrder={fetchOrder as FetchOrder}
+        currentOrderId="order-1"
+      />,
+    );
 
-    await user.type(screen.getByLabelText("参照orderId"), "order-1");
-    await user.click(screen.getByRole("button", { name: "注文を取得" }));
+    await user.click(screen.getByRole("button", { name: "注文を再取得" }));
 
     expect(fetchOrder).toHaveBeenCalledWith("order-1");
     expect(await screen.findByText("id: order-1")).toBeInTheDocument();
@@ -45,10 +49,14 @@ describe("OrderActionsPanel", () => {
       kind: "notFound",
     });
 
-    render(<OrderActionsPanel fetchOrder={fetchOrder as FetchOrder} />);
+    render(
+      <OrderActionsPanel
+        fetchOrder={fetchOrder as FetchOrder}
+        currentOrderId="missing"
+      />,
+    );
 
-    await user.type(screen.getByLabelText("参照orderId"), "missing");
-    await user.click(screen.getByRole("button", { name: "注文を取得" }));
+    await user.click(screen.getByRole("button", { name: "注文を再取得" }));
 
     expect(await screen.findByText("注文が見つかりません")).toBeInTheDocument();
   });
@@ -65,9 +73,13 @@ describe("OrderActionsPanel", () => {
       },
     });
 
-    render(<OrderActionsPanel cancelOrder={cancelOrder as CancelOrder} />);
+    render(
+      <OrderActionsPanel
+        cancelOrder={cancelOrder as CancelOrder}
+        currentOrderId="order-1"
+      />,
+    );
 
-    await user.type(screen.getByLabelText("キャンセルorderId"), "order-1");
     await user.click(screen.getByRole("button", { name: "注文をキャンセル" }));
 
     expect(cancelOrder).toHaveBeenCalledWith("order-1");
@@ -84,10 +96,12 @@ describe("OrderActionsPanel", () => {
     });
 
     render(
-      <OrderActionsPanel confirmPayment={confirmPayment as ConfirmPayment} />,
+      <OrderActionsPanel
+        confirmPayment={confirmPayment as ConfirmPayment}
+        currentOrderId="order-1"
+      />,
     );
 
-    await user.type(screen.getByLabelText("決済orderId"), "order-1");
     await user.type(screen.getByLabelText("amount"), "100");
     await user.type(screen.getByLabelText("idempotencyKey"), "k-1");
     await user.click(screen.getByRole("button", { name: "決済を確定" }));
@@ -107,14 +121,32 @@ describe("OrderActionsPanel", () => {
     });
 
     render(
-      <OrderActionsPanel confirmPayment={confirmPayment as ConfirmPayment} />,
+      <OrderActionsPanel
+        confirmPayment={confirmPayment as ConfirmPayment}
+        currentOrderId="order-1"
+      />,
     );
 
-    await user.type(screen.getByLabelText("決済orderId"), "order-1");
     await user.type(screen.getByLabelText("amount"), "100");
     await user.type(screen.getByLabelText("idempotencyKey"), "k-1");
     await user.click(screen.getByRole("button", { name: "決済を確定" }));
 
     expect(await screen.findByText("金額が一致しません")).toBeInTheDocument();
+  });
+
+  it("現在の注文IDを表示する", () => {
+    render(<OrderActionsPanel currentOrderId="order-xyz" />);
+
+    expect(screen.getByText("現在の注文ID: order-xyz")).toBeInTheDocument();
+  });
+
+  it("現在の注文IDがない場合は先に作成を促す", async () => {
+    const user = userEvent.setup();
+    render(<OrderActionsPanel />);
+
+    await user.click(screen.getByRole("button", { name: "注文を再取得" }));
+    expect(
+      await screen.findByText("先に注文を作成してください"),
+    ).toBeInTheDocument();
   });
 });

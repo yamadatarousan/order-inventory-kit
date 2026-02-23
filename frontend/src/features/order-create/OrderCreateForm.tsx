@@ -3,9 +3,13 @@ import { createOrder, type CreateOrderInput, type CreateOrderResult } from "./or
 
 type OrderCreateFormProps = {
   submitOrder?: (input: CreateOrderInput) => Promise<CreateOrderResult>;
+  onCreated?: (orderId: string) => void;
 };
 
-export function OrderCreateForm({ submitOrder = createOrder }: OrderCreateFormProps) {
+export function OrderCreateForm({
+  submitOrder = createOrder,
+  onCreated,
+}: OrderCreateFormProps) {
   const [customerId, setCustomerId] = useState("");
   const [sku, setSKU] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -56,6 +60,7 @@ export function OrderCreateForm({ submitOrder = createOrder }: OrderCreateFormPr
 
     if (result.kind === "success") {
       setMessage(`注文を受け付けました: ${result.orderId}`);
+      onCreated?.(result.orderId);
       return;
     }
     if (result.kind === "invalid") {
