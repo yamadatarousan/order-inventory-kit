@@ -63,6 +63,38 @@ jobs:
         # OpenAPIから再生成した結果とリポジトリ内の生成物が一致することを要求
         run: ./tools/openapi/generate.sh
 
+      - name: Setup Node.js
+        # frontend の lint/test/build 実行に使う Node.js を固定する。
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend install
+        # frontend 依存を lock file どおりに導入する。
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Frontend lint
+        # frontend の静的検査を実行する。
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Frontend tests
+        # frontend のユニットテストを必須化する。
+        run: |
+          cd frontend
+          npm test
+
+      - name: Frontend build
+        # TypeScript型チェック（noEmit）を通し、実装の整合を確認する。
+        run: |
+          cd frontend
+          npm run build
+
       - name: Architecture checks
         # 依存方向/越境の構造検査
         # Handler → UseCase → Domain の片方向依存などの制約を破った変更を落とす
