@@ -45,32 +45,7 @@ func (r *OrderRepository) Create(order domain.Order, quotedUnitPrices map[string
 		if !ok {
 			return errors.New("quoted unit price is required")
 		}
-		result, err := tx.Exec(`
-			INSERT INTO order_items (order_id, sku, quantity, unit_price)
-			SELECT $1, $2, $3, products.unit_price
-			FROM products
-			WHERE products.sku = $2 AND products.is_active = TRUE AND products.unit_price = $4
-		`, order.ID, item.SKU, item.Quantity, quotedUnitPrice)
-		if err != nil {
-			return err
-		}
-		rows, err := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if rows != 1 {
-			var currentPrice int
-			err := tx.QueryRow(`
-				SELECT unit_price
-				FROM products
-				WHERE sku = $1 AND is_active = TRUE
-			`, item.SKU).Scan(&currentPrice)
-			if err == nil {
-				return domain.ErrPriceConflict
-			}
-			if errors.Is(err, sql.ErrNoRows) {
-				return errors.New("product not available")
-			}
+		if err := r.insertOrderItemWithSnapshot(tx, order.ID, item, quotedUnitPrice); err != nil {
 			return err
 		}
 		_, err = tx.Exec(`
@@ -87,6 +62,45 @@ func (r *OrderRepository) Create(order domain.Order, quotedUnitPrices map[string
 	}
 	committed = true
 	return nil
+}
+
+// insertOrderItemWithSnapshot は商品マスタ価格と照合しつつ注文明細の単価スナップショットを保存する。
+func (r *OrderRepository) insertOrderItemWithSnapshot(tx *sql.Tx, orderID string, item domain.OrderItem, quotedUnitPrice int) error {
+	result, err := tx.Exec(`
+		INSERT INTO order_items (order_id, sku, quantity, unit_price)
+		SELECT $1, $2, $3, products.unit_price
+		FROM products
+		WHERE products.sku = $2 AND products.is_active = TRUE AND products.unit_price = $4
+	`, orderID, item.SKU, item.Quantity, quotedUnitPrice)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 1 {
+		return nil
+	}
+	return classifyOrderItemInsertError(tx, item.SKU)
+}
+
+// classifyOrderItemInsertError は注文明細保存失敗の原因を価格不一致/商品非対象に分類する。
+func classifyOrderItemInsertError(tx *sql.Tx, sku string) error {
+	var currentPrice int
+	err := tx.QueryRow(`
+		SELECT unit_price
+		FROM products
+		WHERE sku = $1 AND is_active = TRUE
+	`, sku).Scan(&currentPrice)
+	if err == nil {
+		return domain.ErrPriceConflict
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		return errors.New("product not available")
+	}
+	return err
 }
 
 // Get は注文を取得する。

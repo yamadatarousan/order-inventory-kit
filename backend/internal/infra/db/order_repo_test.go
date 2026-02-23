@@ -26,6 +26,17 @@ func testQuotedUnitPrices(items []domain.OrderItem) map[string]int {
 	return prices
 }
 
+// orderItemUnitPrice は指定注文・SKUの単価スナップショットを取得する。
+func orderItemUnitPrice(t *testing.T, db *sql.DB, orderID, sku string) int {
+	t.Helper()
+
+	var unitPrice int
+	if err := db.QueryRow(`SELECT unit_price FROM order_items WHERE order_id = $1 AND sku = $2`, orderID, sku).Scan(&unitPrice); err != nil {
+		t.Fatalf("failed to load unit_price order=%s sku=%s: %v", orderID, sku, err)
+	}
+	return unitPrice
+}
+
 // このテストは OrderRepository の永続化仕様を固定する。
 // 仕様対象: 注文の作成・取得・更新で Order の状態と明細が正しく保存されること。
 // 根拠: 保存方式を変更しても注文状態遷移の基盤となるデータ整合を維持するため。
@@ -107,12 +118,46 @@ func TestOrderRepository_作成時に単価スナップショットを保存す�
 		_, _ = db.Exec(`UPDATE products SET unit_price = 100 WHERE sku = $1`, "sku-1")
 	}()
 
-	var snapshotPrice int
-	if err := db.QueryRow(`SELECT unit_price FROM order_items WHERE order_id = $1 AND sku = $2`, "order-1", "sku-1").Scan(&snapshotPrice); err != nil {
-		t.Fatalf("failed to reload snapshot unit_price: %v", err)
-	}
+	snapshotPrice := orderItemUnitPrice(t, db, "order-1", "sku-1")
 	if snapshotPrice != 100 {
 		t.Fatalf("snapshot unit_price must remain 100, got %d", snapshotPrice)
+	}
+}
+
+func TestOrderRepository_商品マスタ価格変更後も既存注文の単価スナップショットは不変(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+	ensureSchema(t, db)
+	resetTables(t, db)
+
+	repo := NewOrderRepository(db)
+	// 先に作成した注文の単価スナップショットを基準値として保持する。
+	firstOrder, _ := domain.NewOrder("order-1", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	if err := repo.Create(firstOrder, map[string]int{"sku-1": 100}); err != nil {
+		t.Fatalf("first order create failed: %v", err)
+	}
+
+	// 商品マスタ価格を変更しても既存注文のスナップショットは変わらないことを検証する。
+	if _, err := db.Exec(`UPDATE products SET unit_price = 120 WHERE sku = $1`, "sku-1"); err != nil {
+		t.Fatalf("failed to update product master price: %v", err)
+	}
+	defer func() {
+		_, _ = db.Exec(`UPDATE products SET unit_price = 100 WHERE sku = $1`, "sku-1")
+	}()
+
+	secondOrder, _ := domain.NewOrder("order-2", "c-1", []domain.OrderItem{{SKU: "sku-1", Quantity: 1}})
+	if err := repo.Create(secondOrder, map[string]int{"sku-1": 120}); err != nil {
+		t.Fatalf("second order create failed: %v", err)
+	}
+
+	// 既存注文は旧価格のまま、新規注文は新価格で保存されることを固定する。
+	firstSnapshot := orderItemUnitPrice(t, db, "order-1", "sku-1")
+	if firstSnapshot != 100 {
+		t.Fatalf("first order snapshot must remain 100, got %d", firstSnapshot)
+	}
+	secondSnapshot := orderItemUnitPrice(t, db, "order-2", "sku-1")
+	if secondSnapshot != 120 {
+		t.Fatalf("second order snapshot must use updated price 120, got %d", secondSnapshot)
 	}
 }
 
